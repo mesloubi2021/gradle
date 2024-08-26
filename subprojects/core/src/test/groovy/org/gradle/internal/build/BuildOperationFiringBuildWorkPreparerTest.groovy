@@ -26,13 +26,13 @@ import org.gradle.execution.plan.LocalTaskNode
 import org.gradle.execution.plan.QueryableExecutionPlan
 import org.gradle.execution.plan.ToPlannedNodeConverterRegistry
 import org.gradle.execution.plan.ToPlannedTaskConverter
-import org.gradle.internal.operations.TestBuildOperationExecutor
+import org.gradle.internal.operations.TestBuildOperationRunner
 import org.gradle.internal.taskgraph.CalculateTaskGraphBuildOperationType
 import org.gradle.internal.taskgraph.NodeIdentity
 import org.gradle.util.Path
 import spock.lang.Specification
 
-import java.util.function.Consumer
+import java.util.function.BiConsumer
 
 class BuildOperationFiringBuildWorkPreparerTest extends Specification {
 
@@ -48,8 +48,8 @@ class BuildOperationFiringBuildWorkPreparerTest extends Specification {
         List<Node> nodes = [t]
 
         def scheduledNodesStub = Stub(QueryableExecutionPlan.ScheduledNodes) {
-            visitNodes(_) >> { Consumer<List<Node>> consumer ->
-                consumer.accept(nodes)
+            visitNodes(_) >> { BiConsumer<List<Node>, Set<Node>> consumer ->
+                consumer.accept(nodes, new HashSet<Node>(nodes))
             }
         }
 
@@ -59,7 +59,7 @@ class BuildOperationFiringBuildWorkPreparerTest extends Specification {
             }
         }
 
-        def buildOperatorsExecutor = new TestBuildOperationExecutor()
+        def buildOperatorsExecutor = new TestBuildOperationRunner()
         def converterRegistry = new ToPlannedNodeConverterRegistry([new ToPlannedTaskConverter()])
         def preparer = new BuildOperationFiringBuildWorkPreparer(buildOperatorsExecutor, Stub(BuildWorkPreparer), converterRegistry)
 

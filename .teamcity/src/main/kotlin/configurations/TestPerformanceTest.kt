@@ -25,11 +25,11 @@ import common.gradleWrapper
 import common.individualPerformanceTestArtifactRules
 import common.killProcessStep
 import common.skipConditionally
-import jetbrains.buildServer.configs.kotlin.v2019_2.BuildSteps
+import jetbrains.buildServer.configs.kotlin.BuildSteps
 import model.CIBuildModel
 import model.Stage
 
-class TestPerformanceTest(model: CIBuildModel, stage: Stage) : BaseGradleBuildType(stage, init = {
+class TestPerformanceTest(model: CIBuildModel, stage: Stage) : OsAwareBaseGradleBuildType(os = Os.LINUX, stage, init = {
     val os = Os.LINUX
     val buildTypeThis = this
     val testProject = "smallJavaMultiProject"

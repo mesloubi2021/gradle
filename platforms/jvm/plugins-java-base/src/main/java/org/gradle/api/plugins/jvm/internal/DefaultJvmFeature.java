@@ -20,9 +20,9 @@ import org.gradle.api.GradleException;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ConfigurationContainer;
 import org.gradle.api.artifacts.ConfigurationPublications;
+import org.gradle.api.artifacts.ConsumableConfiguration;
 import org.gradle.api.artifacts.PublishArtifact;
 import org.gradle.api.artifacts.type.ArtifactTypeDefinition;
-import org.gradle.api.capabilities.CapabilitiesMetadata;
 import org.gradle.api.capabilities.Capability;
 import org.gradle.api.internal.artifacts.configurations.ConfigurationRolesForMigration;
 import org.gradle.api.internal.artifacts.configurations.RoleBasedConfigurationContainerInternal;
@@ -41,7 +41,7 @@ import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.internal.component.external.model.ImmutableCapabilities;
 import org.gradle.util.internal.TextUtil;
 
-import java.util.List;
+import java.util.Set;
 
 import static org.gradle.api.attributes.DocsType.JAVADOC;
 import static org.gradle.api.attributes.DocsType.SOURCES;
@@ -73,10 +73,11 @@ import static org.gradle.api.attributes.DocsType.SOURCES;
  * sources and javadoc variants that the main feature would also conditionally create.</p>
  */
 public class DefaultJvmFeature implements JvmFeatureInternal {
+    private static final String SOURCE_ELEMENTS_VARIANT_NAME_SUFFIX = "SourceElements";
 
     private final String name;
     private final SourceSet sourceSet;
-    private final List<Capability> capabilities;
+    private final Set<Capability> capabilities;
     private final boolean extendProductionCode;
 
     // Services
@@ -111,8 +112,10 @@ public class DefaultJvmFeature implements JvmFeatureInternal {
 
     public DefaultJvmFeature(
         String name,
+        // Should features just create the sourcesets they are going to use?  How can we ensure the same sourceset isn't used
+        // by multiple features (and that the same feature isn't used by multiple components)?
         SourceSet sourceSet,
-        List<Capability> capabilities,
+        Set<Capability> capabilities,
         ProjectInternal project,
         // The elements configurations' roles should always be consumable only, but
         // some users of this class are still migrating towards that. In 9.0, we can remove this
@@ -327,6 +330,27 @@ public class DefaultJvmFeature implements JvmFeatureInternal {
         );
     }
 
+    @Override
+    public void withSourceElements() {
+        // TODO: Why are we using this non-standard name? For the `java` component, this
+        // equates to `mainSourceElements` instead of `sourceElements` as one would expect.
+        // Can we change this name without breaking compatibility? Is the variant name part
+        // of the component's API?
+        String variantName = getSourceSet().getName() + SOURCE_ELEMENTS_VARIANT_NAME_SUFFIX;
+
+        ConsumableConfiguration variant = project.getConfigurations().consumable(variantName).get();
+        variant.setDescription("List of source directories contained in the Main SourceSet.");
+        variant.setVisible(false);
+        variant.extendsFrom(getImplementationConfiguration());
+
+        jvmPluginServices.configureAsSources(variant);
+
+        variant.getOutgoing().artifacts(
+            getSourceSet().getAllSource().getSourceDirectories().getElements().flatMap(e -> project.provider(() -> e)),
+            artifact -> artifact.setType(ArtifactTypeDefinition.DIRECTORY_TYPE)
+        );
+    }
+
     private Configuration dependencyScope(String kind, String suffix, boolean create, boolean warnOnDuplicate) {
         String configName = getConfigurationName(suffix);
         Configuration configuration = create
@@ -353,7 +377,12 @@ public class DefaultJvmFeature implements JvmFeatureInternal {
     }
 
     @Override
-    public CapabilitiesMetadata getCapabilities() {
+    public String getName() {
+        return name;
+    }
+
+    @Override
+    public ImmutableCapabilities getCapabilities() {
         return ImmutableCapabilities.of(capabilities);
     }
 

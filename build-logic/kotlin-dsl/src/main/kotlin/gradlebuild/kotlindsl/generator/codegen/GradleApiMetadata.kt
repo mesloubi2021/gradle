@@ -18,7 +18,6 @@ package gradlebuild.kotlindsl.generator.codegen
 
 import org.gradle.api.internal.file.pattern.PatternMatcher
 import org.gradle.api.internal.file.pattern.PatternMatcherFactory
-import org.gradle.kotlin.dsl.internal.sharedruntime.codegen.ParameterNamesSupplier
 import java.io.File
 import java.util.Properties
 import java.util.jar.JarFile
@@ -28,7 +27,7 @@ internal
 data class GradleApiMetadata(
     val includes: List<String>,
     val excludes: List<String>,
-    val parameterNamesSupplier: ParameterNamesSupplier
+    val parameterNamesSupplier: (String) -> List<String>?
 ) {
     val spec = apiSpecFor(includes, excludes)
 }
@@ -44,7 +43,7 @@ fun gradleApiMetadataFrom(gradleApiMetadataJar: File, gradleApiJars: Collection<
 private
 fun apiDeclarationFrom(gradleApiMetadataJar: File): Pair<List<String>, List<String>> =
     JarFile(gradleApiMetadataJar).use { jar ->
-        val apiDeclaration = jar.loadProperties(gradleApiDeclarationPropertiesName)
+        val apiDeclaration = jar.loadProperties(GRADLE_API_DECLARATION_PROPERTIES_NAME)
         apiDeclaration.getProperty("includes").split(":") to apiDeclaration.getProperty("excludes").split(":")
     }
 
@@ -73,7 +72,7 @@ fun JarFile.loadProperties(name: String): Properties =
 
 
 private
-const val gradleApiDeclarationPropertiesName = "gradle-api-declaration.properties"
+const val GRADLE_API_DECLARATION_PROPERTIES_NAME = "gradle-api-declaration.properties"
 
 
 private
@@ -82,7 +81,7 @@ fun parameterNamesResourceNameFor(jar: File) =
 
 
 private
-fun parameterNamesSupplierFor(parameterNames: List<Properties>): ParameterNamesSupplier =
+fun parameterNamesSupplierFor(parameterNames: List<Properties>): (String) -> List<String>? =
     { key: String ->
         parameterNames.asSequence()
             .mapNotNull { it.getProperty(key, null) }

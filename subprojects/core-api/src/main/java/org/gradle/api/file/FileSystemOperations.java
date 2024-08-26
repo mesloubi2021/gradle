@@ -20,7 +20,7 @@ import org.gradle.api.Action;
 import org.gradle.api.Incubating;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.WorkResult;
-import org.gradle.internal.service.scopes.Scopes;
+import org.gradle.internal.service.scopes.Scope;
 import org.gradle.internal.service.scopes.ServiceScope;
 
 
@@ -31,8 +31,28 @@ import org.gradle.internal.service.scopes.ServiceScope;
  *
  * @since 6.0
  */
-@ServiceScope(Scopes.Build.class)
+@ServiceScope({Scope.Build.class, Scope.Project.class})
 public interface FileSystemOperations {
+
+    /**
+     * Creates a {@link CopySpec} which can later be used to copy files or create an archive. The given action is used
+     * to configure the {@link CopySpec} before it is returned by this method.
+     *
+     * @param action Action to configure the CopySpec
+     * @return The CopySpec
+     * @since 8.5
+     */
+    @Incubating
+    CopySpec copySpec(Action<? super CopySpec> action);
+
+    /**
+     * Creates a {@link CopySpec} which can later be used to copy files or create an archive.
+     *
+     * @return a newly created copy spec
+     * @since 8.5
+     */
+    @Incubating
+    CopySpec copySpec();
 
     /**
      * Copies the specified files.
@@ -70,7 +90,6 @@ public interface FileSystemOperations {
      *
      * @since 8.3
      */
-    @Incubating
     ConfigurableFilePermissions filePermissions(Action<? super ConfigurableFilePermissions> configureAction);
 
     /**
@@ -82,7 +101,6 @@ public interface FileSystemOperations {
      *
      * @since 8.3
      */
-    @Incubating
     ConfigurableFilePermissions directoryPermissions(Action<? super ConfigurableFilePermissions> configureAction);
 
     /**
@@ -95,7 +113,6 @@ public interface FileSystemOperations {
      *
      * @since 8.3
      */
-    @Incubating
     ConfigurableFilePermissions permissions(String unixNumericOrSymbolic);
 
     /**
@@ -108,7 +125,6 @@ public interface FileSystemOperations {
      *
      * @since 8.3
      */
-    @Incubating
     ConfigurableFilePermissions permissions(int unixNumeric);
 
     /**
@@ -116,6 +132,5 @@ public interface FileSystemOperations {
      *
      * @since 8.3
      */
-    @Incubating
     Provider<ConfigurableFilePermissions> permissions(Provider<String> permissions);
 }

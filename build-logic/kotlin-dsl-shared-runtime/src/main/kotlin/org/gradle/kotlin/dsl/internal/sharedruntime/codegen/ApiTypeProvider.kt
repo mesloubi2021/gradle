@@ -138,9 +138,10 @@ class ApiTypeProvider internal constructor(
     }
 
     private
-    fun <T> open(action: () -> T): T =
-        if (closed) throw IllegalStateException("ApiTypeProvider closed!")
-        else action()
+    fun <T> open(action: () -> T): T {
+        check(!closed) { "ApiTypeProvider closed!" }
+        return action()
+    }
 
     internal
     class Context(
@@ -163,6 +164,14 @@ class ApiType internal constructor(
     private val delegateSupplier: () -> ClassNode,
     private val context: ApiTypeProvider.Context
 ) {
+
+    override fun toString(): String {
+        return binaryName
+    }
+
+    internal
+    val binaryName: String
+        get() = binaryNameOfInternalName(delegate.name)
 
     val isPublic: Boolean
         get() = delegate.access.isPublic
@@ -219,6 +228,7 @@ class ApiType internal constructor(
             candidate.desc == methodNode.desc && candidate.signature == methodNode.signature
         }
 
+        @Suppress("LoopWithTooManyJumpStatements")
         while (superTypeStack.isNotEmpty()) {
             val superTypeName = superTypeStack.pop()
 
@@ -294,6 +304,10 @@ class ApiFunction internal constructor(
         context.apiTypeUsageForReturnType(delegate, visitedSignature?.returnType)
     }
 
+    internal
+    val binarySignature: String
+        get() = "${owner.binaryName}.$name(${parameters.joinToString(",") { it.typeBinaryName }})"
+
     private
     val visitedSignature: MethodSignatureVisitor? by unsafeLazy {
         delegate.signature?.let { signature ->
@@ -348,6 +362,7 @@ data class ApiFunctionParameter internal constructor(
     internal val index: Int,
     internal val isVarargs: Boolean,
     private val nameSupplier: () -> String?,
+    internal val typeBinaryName: String,
     val type: ApiTypeUsage
 ) {
 
@@ -416,13 +431,14 @@ fun ApiTypeProvider.Context.apiFunctionParametersFor(function: ApiFunction, dele
             val signatureParameter = visitedSignature?.parameters?.get(idx)
             val parameterTypeName = signatureParameter?.binaryName ?: parameterTypeBinaryName
             val variance = signatureParameter?.variance ?: Variance.INVARIANT
-            val typeArguments = signatureParameter?.typeArguments ?: emptyList<TypeSignatureVisitor>()
+            val typeArguments = signatureParameter?.typeArguments ?: emptyList()
             ApiFunctionParameter(
                 index = idx,
                 isVarargs = idx == parameterTypesBinaryNames.lastIndex && delegate.access.isVarargs,
                 nameSupplier = {
                     names?.get(idx) ?: delegate.parameters?.get(idx)?.name
                 },
+                typeBinaryName = parameterTypeBinaryName,
                 type = apiTypeUsageFor(parameterTypeName, isNullable, variance, typeArguments)
             )
         }
@@ -601,7 +617,7 @@ val mappedTypeStrings =
         "java.lang.Cloneable" to "kotlin.Cloneable",
         "java.lang.Comparable" to "kotlin.Comparable",
         "java.lang.Enum" to "kotlin.Enum",
-        "java.lang.Annotation" to "kotlin.Annotation",
+        "java.lang.annotation.Annotation" to "kotlin.Annotation",
         "java.lang.Deprecated" to "kotlin.Deprecated",
         "java.lang.CharSequence" to "kotlin.CharSequence",
         "java.lang.Number" to "kotlin.Number",

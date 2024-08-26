@@ -19,12 +19,16 @@ plugins {
 }
 
 dependencies {
-    implementation(project(":model-core"))
-    implementation(project(":base-annotations"))
-    implementation(project(":base-services"))
+    api(projects.baseAsm)
 
-    implementation(libs.groovy)
-    implementation(libs.asm)
-    implementation(libs.asmTree)
-    implementation(libs.asmCommons)
+    api(libs.asm)
+    api(libs.asmTree)
+    api(libs.jsr305)
+
+    implementation(projects.stdlibJavaExtensions)
+
+    runtimeOnly(libs.groovy)
+}
+tasks.isolatedProjectsIntegTest {
+    enabled = false
 }

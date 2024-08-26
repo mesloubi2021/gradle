@@ -17,29 +17,20 @@
 package org.gradle.internal.execution.history;
 
 import com.google.common.collect.ImmutableSortedMap;
-import org.gradle.caching.internal.origin.OriginMetadata;
 import org.gradle.internal.fingerprint.CurrentFileCollectionFingerprint;
+import org.gradle.internal.hash.HashCode;
 
 /**
  * Captures the state of a {@link org.gradle.internal.execution.UnitOfWork} after it has been executed.
  *
  * Execution here might also mean being up-to-date or loaded from cache.
  */
-public interface AfterExecutionState extends InputExecutionState, OutputExecutionState {
+public interface AfterExecutionState extends ExecutionInputState, ExecutionOutputState {
     @Override
     ImmutableSortedMap<String, CurrentFileCollectionFingerprint> getInputFileProperties();
 
     /**
-     * The origin metadata of the outputs captured.
-     *
-     * This might come from the current execution, or a previous one.
-     *
-     * @see #isReused()
+     * The cache key for the input state.
      */
-    OriginMetadata getOriginMetadata();
-
-    /**
-     * Whether the outputs come from a previous execution.
-     */
-    boolean isReused();
+    HashCode getCacheKey();
 }

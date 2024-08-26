@@ -81,7 +81,7 @@ include 'a', 'b', 'c', 'd', 'e'
 """
     }
 
-    @ToolingApiVersion(">=4.8 <8.2")
+    @ToolingApiVersion(">=7.0 <8.2")
     @Issue("https://github.com/gradle/gradle/issues/17810")
     def "older Tooling API versions cannot free memory when executing a build action"() {
         when:
@@ -90,8 +90,8 @@ include 'a', 'b', 'c', 'd', 'e'
         }
 
         then:
-        thrown(GradleConnectionException)
-        caughtGradleConnectionException.cause.cause instanceof OutOfMemoryError
+        def e = thrown(GradleConnectionException)
+        e.cause.cause instanceof OutOfMemoryError
     }
 
     @ToolingApiVersion(">=8.2")
@@ -110,7 +110,13 @@ include 'a', 'b', 'c', 'd', 'e'
         connection.action(new FetchProjectsCustomModelsAction())
             .setStandardError(stderr)
             .setStandardOutput(stdout)
-            .setJvmArguments("-Xmx256m")
+            .setJvmArguments(["-Xmx256m"] + kotlinDslJvmArguments())
             .run()
+    }
+
+    private static List<String> kotlinDslJvmArguments() {
+        // Having this unset is now deprecated, will default to `false` in Gradle 9.0
+        // TODO remove - see https://github.com/gradle/gradle/issues/26810
+        ['-Dorg.gradle.kotlin.dsl.skipMetadataVersionCheck=false']
     }
 }

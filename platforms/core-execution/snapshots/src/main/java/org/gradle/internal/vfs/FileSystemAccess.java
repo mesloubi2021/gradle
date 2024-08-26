@@ -17,9 +17,13 @@
 package org.gradle.internal.vfs;
 
 import org.gradle.internal.hash.HashCode;
+import org.gradle.internal.io.IoRunnable;
+import org.gradle.internal.service.scopes.Scope;
+import org.gradle.internal.service.scopes.ServiceScope;
 import org.gradle.internal.snapshot.FileSystemLocationSnapshot;
 import org.gradle.internal.snapshot.SnapshottingFilter;
 
+import java.io.IOException;
 import java.util.Optional;
 
 /**
@@ -29,6 +33,7 @@ import java.util.Optional;
  *
  * The file system access needs to be informed when some state on disk changes, so it does not become out of sync with the actual file system.
  */
+@ServiceScope({Scope.UserHome.class, Scope.BuildSession.class})
 public interface FileSystemAccess {
 
     /**
@@ -51,14 +56,24 @@ public interface FileSystemAccess {
     Optional<FileSystemLocationSnapshot> read(String location, SnapshottingFilter filter);
 
     /**
+     * Invalidate the given locations as they are about to be updated.
+     */
+    void invalidate(Iterable<String> locations);
+
+    /**
      * Runs an action which potentially writes to the given locations.
      */
-    void write(Iterable<String> locations, Runnable action);
+    void write(Iterable<String> locations, IoRunnable action) throws IOException;
 
     /**
      * Updates the cached state at the location with the snapshot.
      */
     void record(FileSystemLocationSnapshot snapshot);
+
+    /**
+     * Move a file or directory on the actual file system atomically, and update the cached state without having to re-snapshot content in the new location.
+     */
+    void moveAtomically(String sourceLocation, String targetLocation) throws IOException;
 
     interface WriteListener {
         void locationsWritten(Iterable<String> locations);

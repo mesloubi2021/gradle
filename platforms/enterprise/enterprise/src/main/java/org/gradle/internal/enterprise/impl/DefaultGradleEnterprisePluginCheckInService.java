@@ -24,13 +24,10 @@ import org.gradle.internal.enterprise.GradleEnterprisePluginMetadata;
 import org.gradle.internal.enterprise.GradleEnterprisePluginServiceFactory;
 import org.gradle.internal.enterprise.GradleEnterprisePluginServiceRef;
 import org.gradle.internal.enterprise.core.GradleEnterprisePluginManager;
-import org.gradle.internal.service.scopes.Scopes;
-import org.gradle.internal.service.scopes.ServiceScope;
 import org.gradle.util.internal.VersionNumber;
 
 import java.util.function.Supplier;
 
-@ServiceScope(Scopes.Gradle.class)
 public class DefaultGradleEnterprisePluginCheckInService implements GradleEnterprisePluginCheckInService {
 
     private final GradleEnterprisePluginManager manager;
@@ -61,9 +58,9 @@ public class DefaultGradleEnterprisePluginCheckInService implements GradleEnterp
         MINIMUM_SUPPORTED_PLUGIN_VERSION_FOR_CONFIGURATION_CACHING.getMinor());
 
     public static final VersionNumber MINIMUM_SUPPORTED_PLUGIN_VERSION_FOR_ISOLATED_PROJECTS = VersionNumber.version(3, 15);
-    public static final String UNSUPPORTED_PLUGIN_DUE_TO_ISOLATED_PROJECTS_MESSAGE = "Gradle Enterprise plugin has been disabled as it is incompatible with isolated projects feature";
+    public static final String UNSUPPORTED_PLUGIN_DUE_TO_ISOLATED_PROJECTS_MESSAGE = "Gradle Enterprise plugin has been disabled as it is incompatible with the isolated projects feature";
 
-    // Gradle versions 9+ are not compatible Gradle Enterprise plugin < 3.13.1
+    // Gradle versions 9+ are not compatible Develocity plugin < 3.13.1
     public static final VersionNumber MINIMUM_SUPPORTED_PLUGIN_VERSION_SINCE_GRADLE_9 = VersionNumber.parse("3.13.1");
 
     private static final String DISABLE_TEST_ACCELERATION_PROPERTY = "gradle.internal.testacceleration.disableImplicitApplication";

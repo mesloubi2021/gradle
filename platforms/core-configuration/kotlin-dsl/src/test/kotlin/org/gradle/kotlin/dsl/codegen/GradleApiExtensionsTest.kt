@@ -22,19 +22,23 @@ import com.nhaarman.mockito_kotlin.mock
 import com.nhaarman.mockito_kotlin.verify
 import com.nhaarman.mockito_kotlin.verifyNoMoreInteractions
 import org.gradle.api.Incubating
-import org.gradle.internal.classanalysis.AsmConstants.ASM_LEVEL
+import org.gradle.model.internal.asm.AsmConstants.ASM_LEVEL
 import org.gradle.internal.classloader.ClassLoaderUtils
+import org.gradle.internal.hash.Hashing
 import org.gradle.kotlin.dsl.accessors.TestWithClassPath
 import org.gradle.kotlin.dsl.fixtures.codegen.ClassAndGroovyNamedArguments
 import org.gradle.kotlin.dsl.fixtures.codegen.ClassToKClass
 import org.gradle.kotlin.dsl.fixtures.codegen.ClassToKClassParameterizedType
 import org.gradle.kotlin.dsl.fixtures.codegen.GroovyNamedArguments
+import org.gradle.kotlin.dsl.fixtures.codegen.IncubatingFunction
+import org.gradle.kotlin.dsl.fixtures.codegen.IncubatingType
 import org.gradle.kotlin.dsl.internal.sharedruntime.codegen.generateKotlinDslApiExtensionsSourceTo
-import org.gradle.kotlin.dsl.support.EmbeddedKotlinCompilerWarning
+import org.gradle.kotlin.dsl.support.KotlinCompilerOptions
 import org.gradle.kotlin.dsl.support.bytecode.GradleJvmVersion
 import org.gradle.kotlin.dsl.support.compileToDirectory
 import org.gradle.test.fixtures.file.LeaksFileHandles
 import org.hamcrest.CoreMatchers.containsString
+import org.hamcrest.CoreMatchers.equalTo
 import org.hamcrest.MatcherAssert.assertThat
 import org.junit.Test
 import org.objectweb.asm.Type
@@ -141,6 +145,8 @@ class GradleApiExtensionsTest : TestWithClassPath() {
                 }
                 """
             )
+
+            assertSingleSourceFileGeneratedFor(ClassToKClass::class)
         }
     }
 
@@ -193,6 +199,8 @@ class GradleApiExtensionsTest : TestWithClassPath() {
                 }
                 """
             )
+
+            assertSingleSourceFileGeneratedFor(GroovyNamedArguments::class)
         }
     }
 
@@ -230,6 +238,8 @@ class GradleApiExtensionsTest : TestWithClassPath() {
                 }
                 """
             )
+
+            assertSingleSourceFileGeneratedFor(ClassAndGroovyNamedArguments::class)
         }
     }
 
@@ -281,6 +291,42 @@ class GradleApiExtensionsTest : TestWithClassPath() {
                 }
                 """
             )
+
+            assertSingleSourceFileGeneratedFor(ClassToKClassParameterizedType::class)
+        }
+    }
+
+    @Test
+    fun `maps incubating type`() {
+        apiKotlinExtensionsGenerationFor(IncubatingType::class) {
+
+            assertGeneratedExtensions(
+                """
+                inline fun org.gradle.kotlin.dsl.fixtures.codegen.IncubatingType.`extendedFunction`(`type`: kotlin.reflect.KClass<kotlin.Number>): Unit =
+                    `extendedFunction`(`type`.java)
+                """,
+            )
+
+            assertSingleSourceFileGeneratedFor(IncubatingType::class).readText().also { generatedCode ->
+                assertThat(generatedCode, containsString("@file:${Incubating::class.java.name}"))
+            }
+        }
+    }
+
+    @Test
+    fun `maps incubating function`() {
+        apiKotlinExtensionsGenerationFor(IncubatingFunction::class) {
+
+            assertGeneratedExtensions(
+                """
+                inline fun org.gradle.kotlin.dsl.fixtures.codegen.IncubatingFunction.`extendedFunction`(`type`: kotlin.reflect.KClass<kotlin.Number>): Unit =
+                    `extendedFunction`(`type`.java)
+                """,
+            )
+
+            assertSingleSourceFileGeneratedFor(IncubatingFunction::class).readText().also { generatedCode ->
+                assertThat(generatedCode, containsString("@${Incubating::class.java.name}"))
+            }
         }
     }
 
@@ -303,10 +349,12 @@ class GradleApiExtensionsTest : TestWithClassPath() {
             file("src").also { it.mkdirs() },
             "org.gradle.kotlin.dsl",
             "SourceBaseName",
+            ::hashTargetTypeSourceName,
             apiJars,
             emptyList(),
             { true },
-            fixtureParameterNamesSupplier
+            fixtureParameterNamesSupplier,
+            { null }
         )
 
         val generatedSourceCode = generatedSourceFiles.joinToString("") {
@@ -372,6 +420,17 @@ class GradleApiExtensionsTest : TestWithClassPath() {
                 }
             }
         }
+
+    private
+    fun ApiKotlinExtensionsGeneration.assertSingleSourceFileGeneratedFor(targetType: KClass<*>): File {
+        assertThat(generatedSourceFiles.size, equalTo(1))
+        assertThat(generatedSourceFiles.single().name, equalTo("SourceBaseName_${hashTargetTypeSourceName(targetType.java.name)}.kt"))
+        return generatedSourceFiles.single()
+    }
+
+    private
+    fun hashTargetTypeSourceName(sourceName: String): String =
+        Hashing.hashString(sourceName).toCompactString()
 }
 
 
@@ -417,12 +476,13 @@ fun compileKotlinApiExtensionsTo(
 
     val success = compileToDirectory(
         outputDirectory,
-        GradleJvmVersion.minimalJavaVersion,
+        KotlinCompilerOptions(
+            jvmTarget = GradleJvmVersion.minimalJavaVersion
+        ),
         "gradle-api-extensions",
         sourceFiles,
         logger,
-        classPath = classPath,
-        onCompilerWarning = EmbeddedKotlinCompilerWarning.DEBUG
+        classPath = classPath
     )
 
     if (!success) {

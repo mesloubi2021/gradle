@@ -17,9 +17,10 @@
 package org.gradle.internal.buildtree;
 
 import org.gradle.internal.concurrent.CompositeStoppable;
+import org.gradle.internal.scopeids.id.BuildInvocationScopeId;
 import org.gradle.internal.service.ServiceRegistry;
 import org.gradle.internal.service.ServiceRegistryBuilder;
-import org.gradle.internal.service.scopes.Scopes;
+import org.gradle.internal.service.scopes.Scope;
 import org.gradle.internal.service.scopes.ServiceScope;
 import org.gradle.internal.work.ProjectParallelExecutionController;
 
@@ -29,16 +30,17 @@ import java.util.function.Function;
 /**
  * Encapsulates the state for a particular build tree.
  */
-@ServiceScope(Scopes.BuildTree.class)
+@ServiceScope(Scope.BuildTree.class)
 public class BuildTreeState implements Closeable {
     private final ServiceRegistry services;
     private final DefaultBuildTreeContext context;
 
-    public BuildTreeState(ServiceRegistry parent, BuildTreeModelControllerServices.Supplier modelServices) {
+    public BuildTreeState(BuildInvocationScopeId buildInvocationScopeId, ServiceRegistry parent, BuildTreeModelControllerServices.Supplier modelServices) {
         services = ServiceRegistryBuilder.builder()
+            .scope(Scope.BuildTree.class)
             .displayName("build tree services")
             .parent(parent)
-            .provider(new BuildTreeScopeServices(this, modelServices))
+            .provider(new BuildTreeScopeServices(buildInvocationScopeId, this, modelServices))
             .build();
         context = new DefaultBuildTreeContext(services);
     }

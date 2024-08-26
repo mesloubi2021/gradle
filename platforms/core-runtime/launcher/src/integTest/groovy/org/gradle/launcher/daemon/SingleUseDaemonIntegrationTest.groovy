@@ -19,6 +19,8 @@ package org.gradle.launcher.daemon
 import org.gradle.integtests.fixtures.AbstractIntegrationSpec
 import org.gradle.integtests.fixtures.AvailableJavaHomes
 import org.gradle.integtests.fixtures.daemon.DaemonLogsAnalyzer
+import org.gradle.integtests.fixtures.jvm.JavaToolchainFixture
+import org.gradle.internal.buildconfiguration.fixture.DaemonJvmPropertiesFixture
 import org.gradle.launcher.daemon.client.DaemonStartupMessage
 import org.gradle.launcher.daemon.client.SingleUseDaemonClient
 import org.gradle.test.precondition.Requires
@@ -27,7 +29,7 @@ import org.gradle.test.preconditions.IntegTestPreconditions
 import java.nio.charset.Charset
 
 @Requires(IntegTestPreconditions.NotDaemonExecutor)
-class SingleUseDaemonIntegrationTest extends AbstractIntegrationSpec {
+class SingleUseDaemonIntegrationTest extends AbstractIntegrationSpec implements DaemonJvmPropertiesFixture, JavaToolchainFixture {
 
     def setup() {
         executer.withArgument("--no-daemon")
@@ -101,17 +103,47 @@ assert java.lang.management.ManagementFactory.runtimeMXBean.inputArguments.conta
         daemons.daemon.stops()
     }
 
+    @Requires([IntegTestPreconditions.JavaHomeWithDifferentVersionAvailable])
+    def "forks build with default daemon JVM args when daemon jvm criteria from build properties does not match current process"() {
+        def otherJdk = AvailableJavaHomes.differentVersion
+        writeJvmCriteria(otherJdk)
+        captureJavaHome()
+
+        when:
+        withInstallations(otherJdk).succeeds()
+
+        then:
+        assertDaemonUsedJvm(otherJdk)
+        wasForked()
+        daemons.daemon.stops()
+    }
+
     @Requires(IntegTestPreconditions.JavaHomeWithDifferentVersionAvailable)
     def "does not fork build when java home from gradle properties matches current process"() {
-        def javaHome = AvailableJavaHomes.differentJdk.javaHome
-
-        file('gradle.properties').writeProperties("org.gradle.java.home": javaHome.canonicalPath)
+        def differentJdk = AvailableJavaHomes.differentJdk
+        file('gradle.properties').writeProperties("org.gradle.java.home": differentJdk.javaHome.canonicalPath)
 
         file('build.gradle') << "println 'javaHome=' + org.gradle.internal.jvm.Jvm.current().javaHome.absolutePath"
 
         when:
-        executer.withJavaHome(javaHome)
+        executer.withJvm(differentJdk)
         succeeds()
+
+        then:
+        wasNotForked()
+    }
+
+    @Requires([IntegTestPreconditions.JavaHomeWithDifferentVersionAvailable])
+    def "does not fork build when daemon jvm criteria from build properties matches current process"() {
+        def otherJdk = AvailableJavaHomes.differentVersion
+
+        writeJvmCriteria(otherJdk)
+        captureJavaHome()
+
+        when:
+        executer.withJvm(otherJdk)
+        withInstallations(otherJdk).succeeds()
+        assertDaemonUsedJvm(otherJdk)
 
         then:
         wasNotForked()
@@ -155,7 +187,7 @@ assert System.getProperty('some-prop') == 'some-value'
         def encoding = Charset.defaultCharset().name()
 
         given:
-        buildScript """
+        buildFile """
             task encoding {
                 doFirst { println "encoding = " + java.nio.charset.Charset.defaultCharset().name() }
             }

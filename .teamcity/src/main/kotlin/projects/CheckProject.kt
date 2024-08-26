@@ -3,10 +3,12 @@ package projects
 import common.cleanupRule
 import common.hiddenArtifactDestination
 import common.isSecurityFork
+import configurations.BaseGradleBuildType
+import configurations.GitHubMergeQueueCheckPass
 import configurations.PerformanceTestsPass
-import configurations.StagePasses
-import jetbrains.buildServer.configs.kotlin.v2019_2.ParameterDisplay
-import jetbrains.buildServer.configs.kotlin.v2019_2.Project
+import configurations.StageTriggers
+import jetbrains.buildServer.configs.kotlin.ParameterDisplay
+import jetbrains.buildServer.configs.kotlin.Project
 import model.CIBuildModel
 import model.FunctionalTestBucketProvider
 import model.Stage
@@ -26,9 +28,10 @@ class CheckProject(
         param("credentialsStorageType", "credentialsJSON")
         // Disallow Web UI changes to TeamCity settings
         param("teamcity.ui.settings.readOnly", "true")
-        // Avoid rebuilding same revision if it's already built on another branch (pre-tested commit)
+        // Avoid rebuilding same revision if it's already built on another branch
         param("teamcity.vcsTrigger.runBuildOnSameRevisionInEveryBranch", "false")
-        param("env.GRADLE_ENTERPRISE_ACCESS_KEY", "%ge.gradle.org.access.key%;%ge-td-dogfooding.grdev.net.access.key%")
+        param("env.DEVELOCITY_ACCESS_KEY", "%ge.gradle.org.access.key%;%gbt-td.grdev.net.access.key%")
+        param("env.CHROME_BIN", "%linux.chrome.bin.path%")
 
         text(
             "additional.gradle.parameters",
@@ -55,18 +58,22 @@ class CheckProject(
 
     var prevStage: Stage? = null
     val previousPerformanceTestPasses: MutableList<PerformanceTestsPass> = mutableListOf()
+    val previousCrossVersionTests: MutableList<BaseGradleBuildType> = mutableListOf()
     model.stages.forEach { stage ->
         if (isSecurityFork() && stage.stageName > StageName.READY_FOR_RELEASE) {
             return@forEach
         }
-        val stageProject = StageProject(model, functionalTestBucketProvider, performanceTestBucketProvider, stage, previousPerformanceTestPasses)
-        val stagePasses = StagePasses(model, stage, prevStage, stageProject)
-        buildType(stagePasses)
+        val stageProject = StageProject(model, functionalTestBucketProvider, performanceTestBucketProvider, stage, previousPerformanceTestPasses, previousCrossVersionTests)
+        val stageTriggers = StageTriggers(model, stage, prevStage, stageProject)
+        stageTriggers.triggers.forEach(::buildType)
         subProject(stageProject)
 
         prevStage = stage
         previousPerformanceTestPasses.addAll(stageProject.performanceTests)
+        previousCrossVersionTests.addAll(stageProject.crossVersionTests)
     }
+
+    buildType(GitHubMergeQueueCheckPass(model))
 
     buildTypesOrder = buildTypes
     subProjectsOrder = subProjects

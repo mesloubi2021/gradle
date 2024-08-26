@@ -16,11 +16,14 @@
 
 package org.gradle.java.compile
 
+import org.gradle.api.internal.tasks.compile.CompilationFailedException
 import org.gradle.integtests.fixtures.AbstractIntegrationSpec
 import org.gradle.integtests.fixtures.CompiledLanguage
 import org.gradle.integtests.fixtures.FeaturePreviewsFixture
+import org.gradle.integtests.fixtures.ToBeFixedForIsolatedProjects
 import spock.lang.Issue
 
+@ToBeFixedForIsolatedProjects(because = "allprojects")
 abstract class AbstractJavaGroovyCompileAvoidanceIntegrationSpec extends AbstractIntegrationSpec {
     abstract boolean isUseJar()
 
@@ -28,7 +31,19 @@ abstract class AbstractJavaGroovyCompileAvoidanceIntegrationSpec extends Abstrac
 
     abstract CompiledLanguage getLanguage()
 
+    /**
+     * Returns the expected error message when a compilation fails.
+     * <p>
+     * This method should be overridden by subclasses that have a different expectation,
+     * based on their integration level with the problems API
+     *
+     * @return the expected error message
+     * @see CompilationFailedException
+     */
+    abstract String expectedJavaCompilationFailureMessage();
+
     def setup() {
+        createDirs("a", "b")
         settingsFile << """
             include 'a', 'b'
         """
@@ -742,7 +757,9 @@ abstract class AbstractJavaGroovyCompileAvoidanceIntegrationSpec extends Abstrac
         fails ":${language.compileTaskName}"
 
         then:
-        failure.assertHasCause('Compilation failed; see the compiler error output for details.')
+        // Depending on the language, we expect either:
+        //  - The
+        failure.assertHasCause(expectedJavaCompilationFailureMessage())
     }
 
     def "detects changes in compile classpath order"() {
@@ -800,7 +817,7 @@ abstract class AbstractJavaGroovyCompileAvoidanceIntegrationSpec extends Abstrac
         fails ":${language.compileTaskName}"
 
         then:
-        failure.assertHasCause('Compilation failed; see the compiler error output for details.')
+        failure.assertHasCause(expectedJavaCompilationFailureMessage())
     }
 
     @Issue("https://github.com/gradle/gradle/issues/20398")

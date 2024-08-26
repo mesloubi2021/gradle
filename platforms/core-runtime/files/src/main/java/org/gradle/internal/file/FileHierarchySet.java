@@ -117,7 +117,8 @@ public abstract class FileHierarchySet {
         }
     };
 
-    private static class PrefixFileSet extends FileHierarchySet {
+    @VisibleForTesting
+    static class PrefixFileSet extends FileHierarchySet {
         private final Node rootNode;
 
         PrefixFileSet(File rootDir) {
@@ -170,9 +171,14 @@ public abstract class FileHierarchySet {
             return plus(toAbsolutePath(rootDir));
         }
 
+        @SuppressWarnings("ReferenceEquality")
         @Override
         public FileHierarchySet plus(String absolutePath) {
-            return new PrefixFileSet(rootNode.plus(removeTrailingSeparator(absolutePath)));
+            Node newRoot = rootNode.plus(removeTrailingSeparator(absolutePath));
+            if (newRoot == rootNode) {
+                return this;
+            }
+            return new PrefixFileSet(newRoot);
         }
 
         private static String toAbsolutePath(File rootDir) {
@@ -244,6 +250,7 @@ public abstract class FileHierarchySet {
             rootNode.visitHierarchy(0, new NodeVisitor() {
                 private boolean first = true;
 
+                @SuppressWarnings("InlineMeInliner")
                 @Override
                 public void visitNode(int depth, Node node) {
                     if (first) {
@@ -274,8 +281,11 @@ public abstract class FileHierarchySet {
         }
 
         Node plus(String path) {
+            return plusWithCommonPrefixLength(path, sizeOfCommonPrefix(path, 0));
+        }
+
+        private Node plusWithCommonPrefixLength(String path, int prefixLen) {
             int maxPos = Math.min(prefix.length(), path.length());
-            int prefixLen = sizeOfCommonPrefix(path, 0);
             if (prefixLen == maxPos) {
                 if (prefix.length() == path.length()) {
                     // Path == prefix
@@ -290,19 +300,22 @@ public abstract class FileHierarchySet {
                         return this;
                     }
                     int startNextSegment = prefixLen == 0 ? 0 : prefixLen + 1;
+                    String nextSegment = path.substring(startNextSegment);
                     List<Node> merged = new ArrayList<Node>(children.size() + 1);
                     boolean matched = false;
                     for (Node child : children) {
-                        if (child.sizeOfCommonPrefix(path, startNextSegment) > 0) {
-                            // TODO - we've already calculated the common prefix and calling plus() will calculate it again
-                            merged.add(child.plus(path.substring(startNextSegment)));
-                            matched = true;
-                        } else {
-                            merged.add(child);
+                        if (!matched) {
+                            int childCommonPrefix = child.sizeOfCommonPrefix(path, startNextSegment);
+                            if (childCommonPrefix > 0) {
+                                merged.add(child.plusWithCommonPrefixLength(nextSegment, childCommonPrefix));
+                                matched = true;
+                                continue;
+                            }
                         }
+                        merged.add(child);
                     }
                     if (!matched) {
-                        merged.add(new Node(path.substring(startNextSegment)));
+                        merged.add(new Node(nextSegment));
                     }
                     return new Node(prefix, merged);
                 } else {

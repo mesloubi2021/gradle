@@ -42,15 +42,16 @@ public class TestExecutionHistoryStore implements ExecutionHistoryStore {
     }
 
     @Override
-    public void store(String key, boolean successful, AfterExecutionState executionState) {
+    public void store(String key, AfterExecutionState executionState) {
         executionHistory.put(key, new DefaultPreviousExecutionState(
             executionState.getOriginMetadata(),
+            executionState.getCacheKey(),
             executionState.getImplementation(),
             executionState.getAdditionalImplementations(),
             executionState.getInputProperties(),
             prepareForSerialization(executionState.getInputFileProperties()),
             executionState.getOutputFilesProducedByWork(),
-            successful
+            executionState.isSuccessful()
         ));
     }
 

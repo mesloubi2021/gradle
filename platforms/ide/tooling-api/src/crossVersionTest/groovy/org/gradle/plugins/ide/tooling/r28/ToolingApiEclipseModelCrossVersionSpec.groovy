@@ -23,7 +23,7 @@ import org.gradle.tooling.model.eclipse.EclipseProject
 
 class ToolingApiEclipseModelCrossVersionSpec extends ToolingApiSpecification implements WithOldConfigurationsSupport {
 
-    @TargetGradleVersion(">=2.8")
+    @TargetGradleVersion(">=3.0")
     def "makes sure module names are unique in gradle"() {
         given:
         file('build.gradle').text = """
@@ -43,6 +43,7 @@ project(':contrib:impl') {
     }
 }
 """
+        createDirs("api", "impl", "contrib", "contrib/api", "contrib/impl")
         file('settings.gradle').text = """
         rootProject.name = "root"
         include 'api', 'impl', 'contrib:api', 'contrib:impl'"""

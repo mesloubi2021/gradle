@@ -17,7 +17,7 @@
 package org.gradle.internal.watch
 
 import com.google.common.collect.ImmutableSet
-import com.gradle.enterprise.testing.annotations.LocalOnly
+import com.gradle.develocity.testing.annotations.LocalOnly
 import org.apache.commons.io.FileUtils
 import org.gradle.cache.GlobalCacheLocations
 import org.gradle.integtests.fixtures.executer.GradleContextualExecuter
@@ -166,24 +166,6 @@ class WatchedDirectoriesFileSystemWatchingIntegrationTest extends AbstractFileSy
         withWatchFs().fails("help")
         then:
         failureHasCause("Boom")
-    }
-
-    def "root project dir does not need to exist"() {
-        def settingsDir = file("gradle")
-        def settingsFile = settingsDir.file("settings.gradle")
-        settingsFile << """
-            rootProject.projectDir = new File(settingsDir, '../root')
-            include 'sub'
-            project(':sub').projectDir = new File(settingsDir, '../sub')
-        """
-        file("sub/build.gradle") << "task thing"
-
-        when:
-        inDirectory(settingsDir)
-        withWatchFs().run("thing")
-        then:
-        executed ":sub:thing"
-
     }
 
     def "detects when a task removes the build directory #buildDir"() {

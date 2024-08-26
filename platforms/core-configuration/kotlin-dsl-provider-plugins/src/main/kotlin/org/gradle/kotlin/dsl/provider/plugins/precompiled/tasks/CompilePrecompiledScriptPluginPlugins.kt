@@ -18,10 +18,9 @@ package org.gradle.kotlin.dsl.provider.plugins.precompiled.tasks
 
 import org.gradle.api.DefaultTask
 import org.gradle.api.JavaVersion
+import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.Directory
 import org.gradle.api.file.DirectoryProperty
-import org.gradle.api.file.FileTree
-import org.gradle.api.file.SourceDirectorySet
 import org.gradle.api.provider.Property
 import org.gradle.api.provider.Provider
 import org.gradle.api.tasks.CacheableTask
@@ -34,10 +33,13 @@ import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
+import org.gradle.initialization.GradlePropertiesController
 import org.gradle.jvm.toolchain.JavaLauncher
 import org.gradle.kotlin.dsl.precompile.v1.PrecompiledPluginsBlock
 import org.gradle.kotlin.dsl.support.ImplicitImports
+import org.gradle.kotlin.dsl.support.KotlinCompilerOptions
 import org.gradle.kotlin.dsl.support.compileKotlinScriptModuleTo
+import org.gradle.kotlin.dsl.support.kotlinCompilerOptions
 import org.gradle.kotlin.dsl.support.scriptDefinitionFromTemplate
 import javax.inject.Inject
 
@@ -49,7 +51,10 @@ import javax.inject.Inject
 abstract class CompilePrecompiledScriptPluginPlugins @Inject constructor(
 
     private
-    val implicitImports: ImplicitImports
+    val implicitImports: ImplicitImports,
+
+    private
+    val gradleProperties: GradlePropertiesController
 
 ) : DefaultTask(), SharedAccessorsPackageAware {
 
@@ -61,20 +66,18 @@ abstract class CompilePrecompiledScriptPluginPlugins @Inject constructor(
     @get:OutputDirectory
     abstract val outputDir: DirectoryProperty
 
-    @Transient
-    private
-    val sourceDirectorySet: SourceDirectorySet = project.objects.sourceDirectorySet(
-        kotlinModuleName,
-        "Precompiled script plugin plugins"
-    )
-
     @get:InputFiles
     @get:IgnoreEmptyDirectories
     @get:PathSensitive(PathSensitivity.RELATIVE)
-    val sourceFiles: FileTree = sourceDirectorySet
+    val sourceFiles: ConfigurableFileCollection = project.files(
+        project.objects.sourceDirectorySet(
+            kotlinModuleName,
+            "Precompiled script plugin plugins"
+        )
+    )
 
     fun sourceDir(dir: Provider<Directory>) {
-        sourceDirectorySet.srcDir(dir)
+        sourceFiles.from(dir)
     }
 
     @get:Nested
@@ -87,6 +90,12 @@ abstract class CompilePrecompiledScriptPluginPlugins @Inject constructor(
     internal
     abstract val jvmTarget: Property<JavaVersion>
 
+    @get:Input
+    protected
+    val compilerOptions: Provider<KotlinCompilerOptions> = project.provider {
+        kotlinCompilerOptions(gradleProperties).copy(jvmTarget = resolveJvmTarget())
+    }
+
     @TaskAction
     fun compile() {
         outputDir.withOutputDirectory { outputDir ->
@@ -94,7 +103,7 @@ abstract class CompilePrecompiledScriptPluginPlugins @Inject constructor(
             if (scriptFiles.isNotEmpty())
                 compileKotlinScriptModuleTo(
                     outputDir,
-                    resolveJvmTarget(),
+                    compilerOptions.get(),
                     kotlinModuleName,
                     scriptFiles,
                     scriptDefinitionFromTemplate(
@@ -103,7 +112,6 @@ abstract class CompilePrecompiledScriptPluginPlugins @Inject constructor(
                     ),
                     classPathFiles.filter { it.exists() },
                     logger,
-                    allWarningsAsErrors = false
                 ) { it } // TODO: translate paths
         }
     }

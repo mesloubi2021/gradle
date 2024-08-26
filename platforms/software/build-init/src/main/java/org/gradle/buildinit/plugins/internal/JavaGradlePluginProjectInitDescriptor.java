@@ -20,6 +20,7 @@ import com.google.common.collect.ImmutableSet;
 import org.gradle.api.internal.DocumentationRegistry;
 import org.gradle.buildinit.plugins.internal.modifiers.BuildInitTestFramework;
 import org.gradle.buildinit.plugins.internal.modifiers.Language;
+import org.gradle.buildinit.plugins.internal.modifiers.ModularizationOption;
 
 import java.util.Set;
 
@@ -42,12 +43,12 @@ public class JavaGradlePluginProjectInitDescriptor extends JvmGradlePluginProjec
     }
 
     @Override
-    public BuildInitTestFramework getDefaultTestFramework() {
+    public BuildInitTestFramework getDefaultTestFramework(ModularizationOption modularizationOption) {
         return BuildInitTestFramework.JUNIT_JUPITER;
     }
 
     @Override
-    public Set<BuildInitTestFramework> getTestFrameworks() {
+    public Set<BuildInitTestFramework> getTestFrameworks(ModularizationOption modularizationOption) {
         return ImmutableSet.of(BuildInitTestFramework.JUNIT_JUPITER);
     }
 
@@ -57,9 +58,8 @@ public class JavaGradlePluginProjectInitDescriptor extends JvmGradlePluginProjec
         if (!settings.isUseTestSuites()) {
             buildScriptBuilder.testImplementationDependency(
                 "Use JUnit Jupiter for testing.",
-                "org.junit.jupiter:junit-jupiter:" + libraryVersionProvider.getVersion("junit-jupiter")
-            );
-            buildScriptBuilder.testRuntimeOnlyDependency(null, "org.junit.platform:junit-platform-launcher");
+                BuildInitDependency.of("org.junit.jupiter:junit-jupiter", libraryVersionProvider.getVersion("junit-jupiter")));
+            buildScriptBuilder.testRuntimeOnlyDependency(null, BuildInitDependency.of("org.junit.platform:junit-platform-launcher"));
         }
     }
 

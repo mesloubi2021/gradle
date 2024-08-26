@@ -17,23 +17,18 @@
 package org.gradle.internal.execution.history;
 
 import com.google.common.collect.ImmutableSortedMap;
-import org.gradle.caching.internal.origin.OriginMetadata;
 import org.gradle.internal.fingerprint.FileCollectionFingerprint;
+import org.gradle.internal.hash.HashCode;
 
 /**
  * Captures the state a {@link org.gradle.internal.execution.UnitOfWork} after the previous execution has finished.
  */
-public interface PreviousExecutionState extends InputExecutionState, OutputExecutionState {
+public interface PreviousExecutionState extends ExecutionInputState, ExecutionOutputState {
 
     /**
-     * The ID and execution time of origin of the execution's outputs.
+     * Returns the cache key from the previous execution.
      */
-    OriginMetadata getOriginMetadata();
-
-    /**
-     * Whether the execution was successful.
-     */
-    boolean isSuccessful();
+    HashCode getCacheKey();
 
     /**
      * {@inheritDoc}

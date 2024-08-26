@@ -16,6 +16,7 @@
 
 package org.gradle.buildinit.plugins
 
+import org.gradle.api.JavaVersion
 import org.gradle.buildinit.plugins.fixtures.ScriptDslFixture
 import org.gradle.buildinit.plugins.internal.modifiers.BuildInitDsl
 import org.gradle.buildinit.plugins.internal.modifiers.BuildInitTestFramework
@@ -27,9 +28,9 @@ import static org.hamcrest.CoreMatchers.allOf
 
 class JavaLibraryInitIntegrationTest extends AbstractJvmLibraryInitIntegrationSpec {
 
-    public static final String SAMPLE_LIBRARY_CLASS = "some/thing/Library.java"
-    public static final String SAMPLE_LIBRARY_TEST_CLASS = "some/thing/LibraryTest.java"
-    public static final String SAMPLE_SPOCK_LIBRARY_TEST_CLASS = "some/thing/LibraryTest.groovy"
+    public static final String SAMPLE_LIBRARY_CLASS = "org/example/Library.java"
+    public static final String SAMPLE_LIBRARY_TEST_CLASS = "org/example/LibraryTest.java"
+    public static final String SAMPLE_SPOCK_LIBRARY_TEST_CLASS = "org/example/LibraryTest.groovy"
 
     def "defaults to Kotlin build scripts"() {
         when:
@@ -42,7 +43,7 @@ class JavaLibraryInitIntegrationTest extends AbstractJvmLibraryInitIntegrationSp
     def "creates sample source if no source present with #scriptDsl build scripts"() {
         def dslFixture = dslFixtureFor(scriptDsl)
         when:
-        run('init', '--type', 'java-library', '--dsl', scriptDsl.id)
+        run('init', '--type', 'java-library', '--dsl', scriptDsl.id, '--java-version', JavaVersion.current().majorVersion)
 
         then:
         subprojectDir.file("src/main/java").assertHasDescendants(SAMPLE_LIBRARY_CLASS)
@@ -57,7 +58,7 @@ class JavaLibraryInitIntegrationTest extends AbstractJvmLibraryInitIntegrationSp
         run("build")
 
         then:
-        assertTestPassed("some.thing.LibraryTest", "someLibraryMethodReturnsTrue")
+        assertTestPassed("org.example.LibraryTest", "someLibraryMethodReturnsTrue")
 
         where:
         scriptDsl << ScriptDslFixture.SCRIPT_DSLS
@@ -67,7 +68,7 @@ class JavaLibraryInitIntegrationTest extends AbstractJvmLibraryInitIntegrationSp
         def dslFixture = dslFixtureFor(scriptDsl)
 
         when:
-        run ('init', '--type', 'java-library', '--incubating', '--dsl', scriptDsl.id)
+        run ('init', '--type', 'java-library', '--incubating', '--dsl', scriptDsl.id, '--java-version', JavaVersion.current().majorVersion)
 
         then:
         subprojectDir.file("src/main/java").assertHasDescendants(SAMPLE_LIBRARY_CLASS)
@@ -80,7 +81,7 @@ class JavaLibraryInitIntegrationTest extends AbstractJvmLibraryInitIntegrationSp
         when:
         run('test')
         then:
-        assertTestPassed("some.thing.LibraryTest", "someLibraryMethodReturnsTrue")
+        assertTestPassed("org.example.LibraryTest", "someLibraryMethodReturnsTrue")
 
         where:
         scriptDsl << ScriptDslFixture.SCRIPT_DSLS
@@ -88,7 +89,7 @@ class JavaLibraryInitIntegrationTest extends AbstractJvmLibraryInitIntegrationSp
 
     def "creates with gradle.properties when using #scriptDsl build scripts with --incubating"() {
         when:
-        run ('init', '--type', 'java-library', '--incubating', '--dsl', scriptDsl.id)
+        run ('init', '--type', 'java-library', '--incubating', '--dsl', scriptDsl.id, '--java-version', JavaVersion.current().majorVersion)
 
         then:
         gradlePropertiesGenerated()
@@ -97,7 +98,7 @@ class JavaLibraryInitIntegrationTest extends AbstractJvmLibraryInitIntegrationSp
         succeeds('test')
 
         then:
-        assertTestPassed("some.thing.LibraryTest", "someLibraryMethodReturnsTrue")
+        assertTestPassed("org.example.LibraryTest", "someLibraryMethodReturnsTrue")
 
         where:
         scriptDsl << ScriptDslFixture.SCRIPT_DSLS
@@ -105,7 +106,7 @@ class JavaLibraryInitIntegrationTest extends AbstractJvmLibraryInitIntegrationSp
 
     def "creates sample source using spock instead of junit with #scriptDsl build scripts"() {
         when:
-        run('init', '--type', 'java-library', '--test-framework', 'spock', '--dsl', scriptDsl.id)
+        run('init', '--type', 'java-library', '--test-framework', 'spock', '--dsl', scriptDsl.id, '--java-version', JavaVersion.current().majorVersion)
 
         then:
         subprojectDir.file("src/main/java").assertHasDescendants(SAMPLE_LIBRARY_CLASS)
@@ -115,13 +116,13 @@ class JavaLibraryInitIntegrationTest extends AbstractJvmLibraryInitIntegrationSp
         and:
         commonJvmFilesGenerated(scriptDsl)
         def dslFixture = dslFixtureFor(scriptDsl)
-        buildFileSeparatesImplementationAndApi(dslFixture, 'org.spockframework')
+        buildFileSeparatesImplementationAndApi(dslFixture, 'spock.core')
 
         when:
         run("build")
 
         then:
-        assertTestPassed("some.thing.LibraryTest", "someLibraryMethod returns true")
+        assertTestPassed("org.example.LibraryTest", "someLibraryMethod returns true")
 
         where:
         scriptDsl << ScriptDslFixture.SCRIPT_DSLS
@@ -129,7 +130,7 @@ class JavaLibraryInitIntegrationTest extends AbstractJvmLibraryInitIntegrationSp
 
     def "creates sample source using testng instead of junit with #scriptDsl build scripts"() {
         when:
-        run('init', '--type', 'java-library', '--test-framework', 'testng', '--dsl', scriptDsl.id)
+        run('init', '--type', 'java-library', '--test-framework', 'testng', '--dsl', scriptDsl.id, '--java-version', JavaVersion.current().majorVersion)
 
         then:
         subprojectDir.file("src/main/java").assertHasDescendants(SAMPLE_LIBRARY_CLASS)
@@ -138,13 +139,13 @@ class JavaLibraryInitIntegrationTest extends AbstractJvmLibraryInitIntegrationSp
         and:
         commonJvmFilesGenerated(scriptDsl)
         def dslFixture = dslFixtureFor(scriptDsl)
-        buildFileSeparatesImplementationAndApi(dslFixture, 'org.testng')
+        buildFileSeparatesImplementationAndApi(dslFixture, 'testng')
 
         when:
         run("build")
 
         then:
-        assertTestPassed("some.thing.LibraryTest", "someLibraryMethodReturnsTrue")
+        assertTestPassed("org.example.LibraryTest", "someLibraryMethodReturnsTrue")
 
         where:
         scriptDsl << ScriptDslFixture.SCRIPT_DSLS
@@ -152,7 +153,7 @@ class JavaLibraryInitIntegrationTest extends AbstractJvmLibraryInitIntegrationSp
 
     def "creates sample source using junit-jupiter instead of junit with #scriptDsl build scripts"() {
         when:
-        run('init', '--type', 'java-library', '--test-framework', 'junit-jupiter', '--dsl', scriptDsl.id)
+        run('init', '--type', 'java-library', '--test-framework', 'junit-jupiter', '--dsl', scriptDsl.id, '--java-version', JavaVersion.current().majorVersion)
 
         then:
         subprojectDir.file("src/main/java").assertHasDescendants(SAMPLE_LIBRARY_CLASS)
@@ -161,13 +162,13 @@ class JavaLibraryInitIntegrationTest extends AbstractJvmLibraryInitIntegrationSp
         and:
         commonJvmFilesGenerated(scriptDsl)
         def dslFixture = dslFixtureFor(scriptDsl)
-        buildFileSeparatesImplementationAndApi(dslFixture, 'org.junit.jupiter')
+        buildFileSeparatesImplementationAndApi(dslFixture, 'junit.jupiter')
 
         when:
         run("build")
 
         then:
-        assertTestPassed("some.thing.LibraryTest", "someLibraryMethodReturnsTrue")
+        assertTestPassed("org.example.LibraryTest", "someLibraryMethodReturnsTrue")
 
         where:
         scriptDsl << ScriptDslFixture.SCRIPT_DSLS
@@ -175,7 +176,7 @@ class JavaLibraryInitIntegrationTest extends AbstractJvmLibraryInitIntegrationSp
 
     def "creates sample source with package and #testFramework and #scriptDsl build scripts"() {
         when:
-        run('init', '--type', 'java-library', '--test-framework', testFramework.id, '--package', 'my.lib', '--dsl', scriptDsl.id)
+        run('init', '--type', 'java-library', '--test-framework', testFramework.id, '--package', 'my.lib', '--dsl', scriptDsl.id, '--java-version', JavaVersion.current().majorVersion)
 
         then:
         subprojectDir.file("src/main/java").assertHasDescendants("my/lib/Library.java")
@@ -201,7 +202,7 @@ class JavaLibraryInitIntegrationTest extends AbstractJvmLibraryInitIntegrationSp
         def dslFixture = dslFixtureFor(scriptDsl)
 
         when:
-        run('init', '--type', 'java-library', '--test-framework', testFramework.id, '--package', 'my.lib', '--dsl', scriptDsl.id, '--incubating')
+        run('init', '--type', 'java-library', '--test-framework', testFramework.id, '--package', 'my.lib', '--dsl', scriptDsl.id, '--incubating', '--java-version', JavaVersion.current().majorVersion)
 
         then:
         subprojectDir.file("src/main/java").assertHasDescendants("my/lib/Library.java")
@@ -228,7 +229,7 @@ class JavaLibraryInitIntegrationTest extends AbstractJvmLibraryInitIntegrationSp
     @Requires(UnitTestPreconditions.Jdk17OrEarlier)
     def "creates sample source with package and spock and #scriptDsl build scripts"() {
         when:
-        run('init', '--type', 'java-library', '--test-framework', 'spock', '--package', 'my.lib', '--dsl', scriptDsl.id)
+        run('init', '--type', 'java-library', '--test-framework', 'spock', '--package', 'my.lib', '--dsl', scriptDsl.id, '--java-version', JavaVersion.current().majorVersion)
 
         then:
         subprojectDir.file("src/main/java").assertHasDescendants("my/lib/Library.java")
@@ -247,13 +248,12 @@ class JavaLibraryInitIntegrationTest extends AbstractJvmLibraryInitIntegrationSp
         scriptDsl << ScriptDslFixture.SCRIPT_DSLS
     }
 
-    // Spock pulls an old version of Groovy that doesn't work with Java 18
-    @Requires(UnitTestPreconditions.Jdk17OrEarlier)
+    @Requires(value = UnitTestPreconditions.Jdk17OrEarlier, reason = "Spock pulls an old version of Groovy that doesn't work with Java 18")
     def "creates sample source with package and spock and #scriptDsl build scripts with --incubating"() {
         def dslFixture = dslFixtureFor(scriptDsl)
 
         when:
-        run('init', '--type', 'java-library', '--test-framework', 'spock', '--package', 'my.lib', '--dsl', scriptDsl.id, '--incubating')
+        run('init', '--type', 'java-library', '--test-framework', 'spock', '--package', 'my.lib', '--dsl', scriptDsl.id, '--incubating', "--java-version", JavaVersion.current().majorVersion)
 
         then:
         subprojectDir.file("src/main/java").assertHasDescendants("my/lib/Library.java")
@@ -291,7 +291,7 @@ class JavaLibraryInitIntegrationTest extends AbstractJvmLibraryInitIntegrationSp
                 }
         """
         when:
-        run('init', '--type', 'java-library', '--dsl', scriptDsl.id)
+        run('init', '--type', 'java-library', '--dsl', scriptDsl.id, '--overwrite', '--java-version', JavaVersion.current().majorVersion)
 
         then:
         subprojectDir.file("src/main/java").assertHasDescendants("org/acme/SampleMain.java")
@@ -312,11 +312,11 @@ class JavaLibraryInitIntegrationTest extends AbstractJvmLibraryInitIntegrationSp
         scriptDsl << ScriptDslFixture.SCRIPT_DSLS
     }
 
-    private static void buildFileSeparatesImplementationAndApi(ScriptDslFixture dslFixture, String testFramework = 'org.junit.jupiter') {
+    private static void buildFileSeparatesImplementationAndApi(ScriptDslFixture dslFixture, String testFramework = 'junit.jupiter') {
         dslFixture.buildFile.assertContents(
             allOf(
-                dslFixture.containsConfigurationDependencyNotation('api', 'org.apache.commons:commons-math3'),
-                dslFixture.containsConfigurationDependencyNotation('implementation', 'com.google.guava:guava:'),
-                dslFixture.containsConfigurationDependencyNotation('testImplementation', testFramework)))
+                dslFixture.containsConfigurationDependencyNotation('api', 'libs.commons.math3'),
+                dslFixture.containsConfigurationDependencyNotation('implementation', 'libs.guava'),
+                dslFixture.containsConfigurationDependencyNotation('testImplementation', 'libs.' + testFramework)))
     }
 }

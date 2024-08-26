@@ -5,5 +5,8 @@ plugins {
 description = "Kotlin DSL Tooling Models for IDEs"
 
 dependencies {
-    api(project(":base-annotations"))
+    api(libs.jsr305)
+}
+tasks.isolatedProjectsIntegTest {
+    enabled = false
 }

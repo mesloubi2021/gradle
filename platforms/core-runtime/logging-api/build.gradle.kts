@@ -25,6 +25,9 @@ gradlebuildJava.usedInWorkers()
 dependencies {
     api(libs.slf4jApi)
 
-    implementation(project(":base-annotations"))
-    implementation(libs.jsr305)
+    implementation(projects.stdlibJavaExtensions)
+    implementation(projects.internalInstrumentationApi)
+}
+tasks.isolatedProjectsIntegTest {
+    enabled = false
 }

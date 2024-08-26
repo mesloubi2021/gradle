@@ -5,19 +5,32 @@ plugins {
 
 description = "API extraction for Java"
 
-dependencies {
-    implementation(project(":base-annotations"))
-    implementation(project(":hashing"))
-    implementation(project(":files"))
-    implementation(project(":snapshots"))
-    implementation(project(":functional"))
+errorprone {
+    disabledChecks.addAll(
+        "EmptyBlockTag", // 2 occurrences
+        "NonApiType", // 1 occurrences
+        "ProtectedMembersInFinalClass", // 1 occurrences
+    )
+}
 
-    implementation(libs.asm)
-    implementation(libs.guava)
+dependencies {
+    api(projects.hashing)
+    api(projects.files)
+    api(projects.snapshots)
+
+    api(libs.jsr305)
+    api(libs.guava)
+    api("org.gradle:java-api-extractor")
+
+    implementation(projects.functional)
+
     implementation(libs.slf4jApi)
     implementation(libs.commonsIo)
 
-    testImplementation(project(":base-services"))
-    testImplementation(project(":internal-testing"))
-    testImplementation(testFixtures(project(":snapshots")))
+    testImplementation(projects.baseServices)
+    testImplementation(projects.internalTesting)
+    testImplementation(testFixtures(projects.snapshots))
+}
+tasks.isolatedProjectsIntegTest {
+    enabled = false
 }

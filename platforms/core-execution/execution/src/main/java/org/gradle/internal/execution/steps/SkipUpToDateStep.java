@@ -20,12 +20,10 @@ import com.google.common.collect.ImmutableList;
 import org.apache.commons.lang.StringUtils;
 import org.gradle.internal.Try;
 import org.gradle.internal.execution.ExecutionEngine.Execution;
-import org.gradle.internal.execution.ExecutionEngine.ExecutionOutcome;
 import org.gradle.internal.execution.UnitOfWork;
-import org.gradle.internal.execution.history.AfterExecutionState;
-import org.gradle.internal.execution.history.BeforeExecutionState;
+import org.gradle.internal.execution.history.ExecutionOutputState;
 import org.gradle.internal.execution.history.PreviousExecutionState;
-import org.gradle.internal.execution.history.impl.DefaultAfterExecutionState;
+import org.gradle.internal.execution.history.impl.DefaultExecutionOutputState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,36 +49,22 @@ public class SkipUpToDateStep<C extends IncrementalChangesContext> implements St
         ImmutableList<String> reasons = context.getRebuildReasons();
         return context.getChanges()
             .filter(__ -> reasons.isEmpty())
-            .map(changes -> skipExecution(work, changes.getBeforeExecutionState(), context))
+            .map(changes -> skipExecution(work, context))
             .orElseGet(() -> executeBecause(work, reasons, context));
     }
 
-    private UpToDateResult skipExecution(UnitOfWork work, BeforeExecutionState beforeExecutionState, C context) {
+    private UpToDateResult skipExecution(UnitOfWork work, C context) {
         if (LOGGER.isInfoEnabled()) {
             LOGGER.info("Skipping {} as it is up-to-date.", work.getDisplayName());
         }
         @SuppressWarnings("OptionalGetWithoutIsPresent")
         PreviousExecutionState previousExecutionState = context.getPreviousExecutionState().get();
-        AfterExecutionState afterExecutionState = new DefaultAfterExecutionState(
-            beforeExecutionState,
-            previousExecutionState.getOutputFilesProducedByWork(),
-            previousExecutionState.getOriginMetadata(),
-            true);
-        Try<Execution> execution = Try.successful(new Execution() {
-            @Override
-            public ExecutionOutcome getOutcome() {
-                return UP_TO_DATE;
-            }
-
-            @Override
-            public Object getOutput() {
-                return work.loadAlreadyProducedOutput(context.getWorkspace());
-            }
-        });
+        ExecutionOutputState executionOutputState = new DefaultExecutionOutputState(true, previousExecutionState.getOutputFilesProducedByWork(), previousExecutionState.getOriginMetadata(), true);
+        Try<Execution> execution = Try.successful(Execution.skipped(UP_TO_DATE, work));
         return new UpToDateResult(
             previousExecutionState.getOriginMetadata().getExecutionTime(),
             execution,
-            afterExecutionState,
+            executionOutputState,
             ImmutableList.of(),
             previousExecutionState.getOriginMetadata()
         );
@@ -89,13 +73,10 @@ public class SkipUpToDateStep<C extends IncrementalChangesContext> implements St
     private UpToDateResult executeBecause(UnitOfWork work, ImmutableList<String> reasons, C context) {
         logExecutionReasons(reasons, work);
         AfterExecutionResult result = delegate.execute(work, context);
-        return new UpToDateResult(result, reasons, result.getAfterExecutionState()
-            .filter(AfterExecutionState::isReused)
-            .map(AfterExecutionState::getOriginMetadata)
-            .orElse(null));
+        return new UpToDateResult(result, reasons);
     }
 
-    private void logExecutionReasons(List<String> reasons, UnitOfWork work) {
+    private static void logExecutionReasons(List<String> reasons, UnitOfWork work) {
         if (LOGGER.isInfoEnabled()) {
             Formatter formatter = new Formatter();
             formatter.format("%s is not up-to-date because:", StringUtils.capitalize(work.getDisplayName()));

@@ -3,9 +3,11 @@ import common.JvmVersion
 import common.Os
 import common.VersionedSettingsBranch
 import configurations.BaseGradleBuildType
-import jetbrains.buildServer.configs.kotlin.v2019_2.DslContext
-import jetbrains.buildServer.configs.kotlin.v2019_2.buildSteps.GradleBuildStep
-import jetbrains.buildServer.configs.kotlin.v2019_2.failureConditions.BuildFailureOnText
+import configurations.StageTrigger
+import configurations.stageWithOsTriggers
+import jetbrains.buildServer.configs.kotlin.DslContext
+import jetbrains.buildServer.configs.kotlin.buildSteps.GradleBuildStep
+import jetbrains.buildServer.configs.kotlin.failureConditions.BuildFailureOnText
 import model.ALL_CROSS_VERSION_BUCKETS
 import model.CIBuildModel
 import model.DefaultFunctionalTestBucketProvider
@@ -41,12 +43,14 @@ class CIConfigIntegrationTests {
     @Test
     fun configurationTreeCanBeGenerated() {
         assertEquals(rootProject.subProjects.size, model.stages.size)
-        assertEquals(rootProject.buildTypes.size, model.stages.size)
+        // +1 for the GitHubMergeQueueCheckPass
+        // +8 for OS triggers
+        assertEquals(rootProject.buildTypes.size, model.stages.size + 1 + stageWithOsTriggers.values.sumOf { it.size })
     }
 
     @Test
     fun configurationsHaveDependencies() {
-        val stagePassConfigs = rootProject.buildTypes
+        val stagePassConfigs = rootProject.buildTypes.filter { it is StageTrigger && it.name.endsWith("(Trigger)") }
         assertEquals(model.stages.size, stagePassConfigs.size)
         stagePassConfigs.forEach {
             val stageNumber = stagePassConfigs.indexOf(it) + 1
@@ -216,11 +220,14 @@ class CIConfigIntegrationTests {
     }
 
     private fun containsSrcFileWithString(srcRoot: File, content: String, exceptions: List<String>): Boolean {
-        srcRoot.walkTopDown().forEach {
-            if (it.extension == "groovy" || it.extension == "java") {
-                val text = it.readText()
+        srcRoot.walkTopDown().forEach { file ->
+            if (file.extension == "groovy" || file.extension == "java") {
+                val originalText = file.readText()
+                val text = originalText.lineSequence()
+                    .filterNot { it.trim().startsWith("//") }
+                    .joinToString("\n")
                 if (text.contains(content) && exceptions.all { !text.contains(it) }) {
-                    println("Found suspicious test file: $it")
+                    println("Found suspicious test file: $file")
                     return true
                 }
             }

@@ -6,25 +6,28 @@ plugins {
 description = "Package build cache results"
 
 dependencies {
-    api(project(":build-cache-base"))
-    api(project(":snapshots"))
-    api(project(":hashing"))
-    api(project(":files"))
 
-    implementation(project(":base-annotations"))
-    implementation(project(":wrapper-shared")) {
-        because("We need to access the ZipSlip helper class")
-    }
-    implementation(libs.guava)
+    api(projects.buildCacheBase)
+    api(projects.files)
+    api(projects.hashing)
+    api(projects.snapshots)
+
+    api(libs.guava)
+
+    implementation(projects.stdlibJavaExtensions)
     implementation(libs.commonsCompress)
     implementation(libs.commonsIo)
+    implementation(libs.jsr305)
 
-    testImplementation(project(":process-services"))
-    testImplementation(project(":file-collections"))
-    testImplementation(project(":resources"))
+    testImplementation(projects.fileCollections)
+    testImplementation(projects.processServices)
+    testImplementation(projects.resources)
 
-    testImplementation(testFixtures(project(":base-services")))
-    testImplementation(testFixtures(project(":core")))
-    testImplementation(testFixtures(project(":snapshots")))
-    testImplementation(testFixtures(project(":core-api")))
+    testImplementation(testFixtures(projects.baseServices))
+    testImplementation(testFixtures(projects.core))
+    testImplementation(testFixtures(projects.coreApi))
+    testImplementation(testFixtures(projects.snapshots))
+}
+tasks.isolatedProjectsIntegTest {
+    enabled = false
 }

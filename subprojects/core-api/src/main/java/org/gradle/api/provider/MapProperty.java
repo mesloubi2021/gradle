@@ -16,6 +16,7 @@
 
 package org.gradle.api.provider;
 
+import org.gradle.api.Incubating;
 import org.gradle.api.SupportsKotlinAssignmentOverloading;
 
 import javax.annotation.Nullable;
@@ -36,7 +37,7 @@ import java.util.Set;
  * @since 5.1
  */
 @SupportsKotlinAssignmentOverloading
-public interface MapProperty<K, V> extends Provider<Map<K, V>>, HasConfigurableValue {
+public interface MapProperty<K, V> extends Provider<Map<K, V>>, HasConfigurableValue, SupportsConvention {
 
     /**
      * Sets the value of this property to an empty map, and replaces any existing value.
@@ -178,6 +179,28 @@ public interface MapProperty<K, V> extends Provider<Map<K, V>>, HasConfigurableV
      * @return this
      */
     MapProperty<K, V> convention(Provider<? extends Map<? extends K, ? extends V>> valueProvider);
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>
+     * This is similar to calling {@link #value(Map)} with a <code>null</code> argument.
+     * </p>
+     */
+    @Incubating
+    @Override
+    MapProperty<K, V> unset();
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>
+     * This is similar to calling {@link #convention(Map)} with a <code>null</code> argument.
+     * </p>
+     */
+    @Incubating
+    @Override
+    MapProperty<K, V> unsetConvention();
 
     /**
      * Disallows further changes to the value of this property. Calls to methods that change the value of this property, such as {@link #set(Map)} or {@link #put(Object, Object)} will fail.

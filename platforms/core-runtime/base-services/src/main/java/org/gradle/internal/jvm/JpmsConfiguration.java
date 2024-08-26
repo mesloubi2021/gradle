@@ -33,14 +33,15 @@ public class JpmsConfiguration {
         "--add-opens=java.base/java.lang=ALL-UNNAMED",
         "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED",
         "--add-opens=java.base/java.util=ALL-UNNAMED",
-        "--add-opens=java.prefs/java.util.prefs=ALL-UNNAMED" // required by PreferenceCleaningGroovySystemLoader
+        "--add-opens=java.prefs/java.util.prefs=ALL-UNNAMED", // required by PreferenceCleaningGroovySystemLoader
+        "--add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED", // Required by JdkTools and JdkJavaCompiler
+        "--add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED" // Required by JdkTools and JdkJavaCompiler
     ));
 
     public static final List<String> GRADLE_DAEMON_JPMS_ARGS;
 
     static {
-        List<String> gradleDaemonJvmArgs = new ArrayList<String>();
-        gradleDaemonJvmArgs.addAll(GROOVY_JPMS_ARGS);
+        List<String> gradleDaemonJvmArgs = new ArrayList<String>(GROOVY_JPMS_ARGS);
 
         List<String> configurationCacheJpmsArgs = Collections.unmodifiableList(Arrays.asList(
             "--add-opens=java.prefs/java.util.prefs=ALL-UNNAMED", // required by JavaObjectSerializationCodec.kt

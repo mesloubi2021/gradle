@@ -16,16 +16,13 @@
 
 package org.gradle.plugins.ide.tooling.r56
 
-
 import org.gradle.integtests.tooling.fixture.TargetGradleVersion
 import org.gradle.integtests.tooling.fixture.ToolingApiSpecification
-import org.gradle.integtests.tooling.fixture.ToolingApiVersion
 import org.gradle.tooling.model.eclipse.EclipseClasspathEntry
 import org.gradle.tooling.model.eclipse.EclipseProject
 import org.gradle.tooling.model.eclipse.EclipseProjectDependency
 import org.gradle.util.GradleVersion
 
-@ToolingApiVersion('>=5.6')
 @TargetGradleVersion(">=5.6")
 class ToolingApiEclipseModelTestSourcesCrossVersionSpec extends ToolingApiSpecification {
 
@@ -72,6 +69,7 @@ class ToolingApiEclipseModelTestSourcesCrossVersionSpec extends ToolingApiSpecif
 
     def "can use compile classpath for API and implementation separation"() {
         given:
+        createDirs("a", "b", "c", "d")
         settingsFile << "include('a', 'b', 'c', 'd')"
         buildFile << """
             subprojects {
@@ -153,6 +151,7 @@ class ToolingApiEclipseModelTestSourcesCrossVersionSpec extends ToolingApiSpecif
     @TargetGradleVersion(">=7.5")
     def "Project dependencies can have test attributes"() {
         setup:
+        createDirs("a", "b", "c", "d")
         settingsFile << """
             include 'a', 'b', 'c', 'd'
         """

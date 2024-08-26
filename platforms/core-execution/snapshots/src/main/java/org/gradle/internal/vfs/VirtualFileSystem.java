@@ -21,6 +21,7 @@ import org.gradle.internal.snapshot.MetadataSnapshot;
 
 import java.util.Optional;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 public interface VirtualFileSystem {
 
@@ -33,6 +34,11 @@ public interface VirtualFileSystem {
      * Returns the metadata stored at the absolute path if it exists.
      */
     Optional<MetadataSnapshot> findMetadata(String absolutePath);
+
+    /**
+     * Returns all root snapshots in the hierarchy below {@code absolutePath}.
+     */
+    Stream<FileSystemLocationSnapshot> findRootSnapshotsUnder(String absolutePath);
 
     /**
      * Snapshots and stores the result in the VFS.
@@ -49,7 +55,7 @@ public interface VirtualFileSystem {
      * If the snapshotted location is invalidated while snapshotting,
      * then the snapshot is not stored in the VFS to avoid inconsistent state.
      */
-    <T> T store(String baseLocation, StoringAction<T> storingAction);
+    <T> T storeWithAction(String baseLocation, StoringAction<T> storingAction);
 
     /**
      * Snapshotting action which produces possibly more than one snapshot.

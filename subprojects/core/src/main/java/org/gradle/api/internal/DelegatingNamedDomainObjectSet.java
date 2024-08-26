@@ -31,7 +31,7 @@ import java.util.SortedMap;
 import java.util.SortedSet;
 
 /**
- * A {@Link NamedDomainObjectSet} which delegates all methods to a provided delegate.
+ * A {@link NamedDomainObjectSet} which delegates all methods to a provided delegate.
  */
 public class DelegatingNamedDomainObjectSet<T> extends DelegatingDomainObjectSet<T> implements NamedDomainObjectSet<T> {
 
@@ -47,6 +47,11 @@ public class DelegatingNamedDomainObjectSet<T> extends DelegatingDomainObjectSet
     @Override
     public <S extends T> NamedDomainObjectSet<S> withType(Class<S> type) {
         return getDelegate().withType(type);
+    }
+
+    @Override
+    public NamedDomainObjectSet<T> named(Spec<String> nameFilter) {
+        return getDelegate().named(nameFilter);
     }
 
     @Override

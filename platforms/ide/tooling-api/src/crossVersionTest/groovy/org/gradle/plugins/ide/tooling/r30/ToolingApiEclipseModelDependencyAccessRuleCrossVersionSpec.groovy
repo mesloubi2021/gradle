@@ -16,24 +16,21 @@
 
 package org.gradle.plugins.ide.tooling.r30
 
-import org.gradle.integtests.tooling.fixture.TargetGradleVersion
+
 import org.gradle.integtests.tooling.fixture.ToolingApiSpecification
-import org.gradle.integtests.tooling.fixture.ToolingApiVersion
 import org.gradle.integtests.tooling.fixture.WithOldConfigurationsSupport
 import org.gradle.test.fixtures.maven.MavenFileRepository
-import org.gradle.tooling.model.UnsupportedMethodException
 import org.gradle.tooling.model.eclipse.EclipseExternalDependency
 import org.gradle.tooling.model.eclipse.EclipseProject
 import org.gradle.tooling.model.eclipse.EclipseProjectDependency
 
-@ToolingApiVersion('>=3.0')
-@TargetGradleVersion(">=3.0")
 class ToolingApiEclipseModelDependencyAccessRuleCrossVersionSpec extends ToolingApiSpecification implements WithOldConfigurationsSupport {
 
     def setup() {
         def mavenRepo = new MavenFileRepository(file("maven-repo"))
         mavenRepo.module("org.example", "example-lib", "1.0").publish()
 
+        createDirs("sub")
         settingsFile <<
         """rootProject.name = 'root'
            include 'sub'
@@ -56,24 +53,6 @@ class ToolingApiEclipseModelDependencyAccessRuleCrossVersionSpec extends Tooling
                apply plugin: 'java'
            }
         """
-    }
-
-    @TargetGradleVersion(">=2.6 <3.0")
-    def "Older versions throw runtime exception when querying access rules"() {
-        when:
-        EclipseProject project = loadToolingModel(EclipseProject)
-        EclipseProjectDependency projectDependency = project.projectDependencies.find { it.path.contains 'sub' }
-        EclipseExternalDependency externalDependency = project.classpath.find { it.file.path.contains 'example-lib' }
-        projectDependency.getAccessRules()
-
-        then:
-        thrown UnsupportedMethodException
-
-        when:
-        externalDependency.getAccessRules()
-
-        then:
-        thrown UnsupportedMethodException
     }
 
     def "Has no access rules"() {

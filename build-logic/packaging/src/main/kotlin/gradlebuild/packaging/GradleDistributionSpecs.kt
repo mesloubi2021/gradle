@@ -40,7 +40,7 @@ object GradleDistributionSpecs {
 
         into("bin") {
             from(gradleScriptPath)
-            fileMode = Integer.parseInt("0755", 8)
+            filePermissions { unix("0755") }
         }
 
         into("lib") {
@@ -57,7 +57,7 @@ object GradleDistributionSpecs {
     }
 
     /**
-     * The binary distribution enriched with the sources for the classes and an offline version of Gradle's documentation (without samples).
+     * The binary distribution enriched with source files (including resources) and an offline version of Gradle's documentation (without samples).
      */
     fun Project.allDistributionSpec() = copySpec {
         val sourcesPath by configurations.getting
@@ -68,7 +68,10 @@ object GradleDistributionSpecs {
             eachFile {
                 val subprojectFolder = file.containingSubprojectFolder(listOf("src", "main", "java").size + relativeSourcePath.segments.size)
                 val leadingSegments = relativePath.segments.size - relativeSourcePath.segments.size
-                relativePath = relativeSourcePath.prepend("src", subprojectFolder.name).prepend(*(relativePath.segments.subArray(leadingSegments)))
+                @Suppress("SpreadOperator")
+                relativePath = relativeSourcePath
+                    .prepend("src", subprojectFolder.name)
+                    .prepend(*(relativePath.segments.subArray(leadingSegments)))
                 includeEmptyDirs = false
             }
         }
@@ -96,7 +99,7 @@ object GradleDistributionSpecs {
      */
     fun Project.srcDistributionSpec() = copySpec {
         from(repoRoot().file("gradlew")) {
-            fileMode = Integer.parseInt("0755", 8)
+            filePermissions { unix("0755") }
         }
         from(repoRoot()) {
             listOf(
@@ -122,9 +125,9 @@ object GradleDistributionSpecs {
     }
 
     private
-    fun File.containingSubprojectFolder(relativePathLenght: Int): File =
-        if (relativePathLenght == 0) this else this.parentFile.containingSubprojectFolder(relativePathLenght - 1)
+    fun File.containingSubprojectFolder(relativePathLength: Int): File =
+        if (relativePathLength == 0) this else this.parentFile.containingSubprojectFolder(relativePathLength - 1)
 
     private
-    fun Array<String>.subArray(toIndex: Int) = listOf(*this).subList(0, toIndex).toTypedArray()
+    fun Array<String>.subArray(toIndex: Int) = this.sliceArray(0 until toIndex)
 }

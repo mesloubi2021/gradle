@@ -6,14 +6,15 @@ description = "Provides plugins that combine and configure other plugins for dif
 
 dependencies {
     implementation("gradlebuild:basics")
+    implementation("gradlebuild:publishing")
 
-    implementation(project(":buildquality"))
-    implementation(project(":cleanup"))
-    implementation(project(":dependency-modules"))
-    implementation(project(":jvm"))
-    implementation(project(":profiling"))
-    implementation(project(":publishing"))
+    implementation(projects.buildquality)
+    implementation(projects.cleanup)
+    implementation(projects.dependencyModules)
+    implementation(projects.jvm)
+    implementation(projects.profiling)
 
     implementation("org.gradle.kotlin:gradle-kotlin-dsl-conventions")
     implementation(kotlin("gradle-plugin"))
+    implementation("com.autonomousapps:dependency-analysis-gradle-plugin")
 }

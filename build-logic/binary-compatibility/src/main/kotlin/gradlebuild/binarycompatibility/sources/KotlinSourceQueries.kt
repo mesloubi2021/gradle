@@ -30,6 +30,7 @@ import javassist.CtConstructor
 import javassist.CtField
 import javassist.CtMember
 import javassist.CtMethod
+import javassist.Modifier
 import org.jetbrains.kotlin.kdoc.psi.api.KDoc
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.KtClassOrObject
@@ -64,7 +65,7 @@ object KotlinSourceQueries {
                 is CtField -> ktFile.isDocumentedAsSince(version, ctDeclaringClass, ctMember)
                 is CtConstructor -> ktFile.isDocumentedAsSince(version, ctDeclaringClass, ctMember)
                 is CtMethod -> ktFile.isDocumentedAsSince(version, ctDeclaringClass, ctMember)
-                else -> throw IllegalStateException("Unsupported japicmp member type '${member::class}'")
+                else -> error("Unsupported japicmp member type '${member::class}'")
             }
         }
     }
@@ -135,6 +136,7 @@ fun KtFile.collectKtFunctionsFor(qualifiedBaseName: String, method: CtMethod): L
         if (!(extensionCandidate || ktFunction.valueParameters.size == paramCount)) {
             return@collectDescendantsOfType false
         }
+        val isVarargs = Modifier.isVarArgs(method.modifiers)
 
         // Parameter type check
         method.parameterTypes
@@ -144,7 +146,7 @@ fun KtFile.collectKtFunctionsFor(qualifiedBaseName: String, method: CtMethod): L
             .withIndex()
             .all<IndexedValue<CtClass>> {
                 val ktParamType = ktFunction.valueParameters[it.index].typeReference!!
-                it.value.isLikelyEquivalentTo(ktParamType)
+                it.value.isLikelyEquivalentTo(ktParamType) || (isVarargs && it.value.componentType.isLikelyEquivalentTo(ktParamType))
             }
     }
 }
@@ -223,7 +225,7 @@ val JApiCompatibility.newCtMember: CtClassOrCtMember
         is JApiConstructor -> newConstructor.get()
         is JApiField -> newFieldOptional.get()
         is JApiMethod -> newMethod.get()
-        else -> throw IllegalStateException("Unsupported japicmp member type '${this::class}'")
+        else -> error("Unsupported japicmp member type '${this::class}'")
     }
 
 
@@ -239,7 +241,7 @@ val CtClassOrCtMember.declaringClass: CtClass
     get() = when (this) {
         is CtClass -> declaringClass ?: this
         is CtMember -> declaringClass
-        else -> throw IllegalStateException("Unsupported javassist member type '${this::class}'")
+        else -> error("Unsupported javassist member type '${this::class}'")
     }
 
 
@@ -262,11 +264,18 @@ fun CtBehavior.firstParameterMatches(ktTypeReference: KtTypeReference): Boolean 
 
 private
 fun CtClass.isLikelyEquivalentTo(ktTypeReference: KtTypeReference): Boolean {
-    if (ktTypeReference.text.contains(" -> ")) {
+    val ktTypeAsText = ktTypeReference.text
+    if (ktTypeAsText.contains(" -> ")) {
         // This is a function of some sort
         return name.startsWith("kotlin.jvm.functions.Function")
     }
-    return (primitiveTypeStrings[name] ?: name).endsWith(ktTypeReference.text.substringBefore('<'))
+
+    val ktTypeRawName = ktTypeAsText
+        .trimEnd('?') // nullability is not part of JVM types
+        .substringBefore('<') // generics are not part of parameter types in JVM method signatures
+
+    val thisTypeAsKt = primitiveTypeStrings[name] ?: name
+    return thisTypeAsKt.endsWith(ktTypeRawName)
 }
 
 

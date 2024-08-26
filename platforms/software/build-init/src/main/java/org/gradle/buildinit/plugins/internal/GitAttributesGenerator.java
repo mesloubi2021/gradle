@@ -26,7 +26,7 @@ import java.io.PrintWriter;
 public class GitAttributesGenerator implements BuildContentGenerator {
 
     @Override
-    public void generate(InitSettings settings) {
+    public void generate(InitSettings settings, BuildContentGenerationContext buildContentGenerationContext) {
         File file = settings.getTarget().file(".gitattributes").getAsFile();
         try {
             try (PrintWriter writer = new PrintWriter(new FileWriter(file))) {
@@ -38,6 +38,9 @@ public class GitAttributesGenerator implements BuildContentGenerator {
                 writer.println();
                 writer.println("# These are Windows script files and should use crlf");
                 writer.println("*.bat           text eol=crlf");
+                writer.println();
+                writer.println("# Binary files should be left untouched");
+                writer.println("*.jar           binary");
                 writer.println();
             }
         } catch (IOException e) {

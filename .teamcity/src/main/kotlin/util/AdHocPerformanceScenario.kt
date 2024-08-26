@@ -13,9 +13,9 @@ import common.killProcessStep
 import common.performanceTestCommandLine
 import common.removeSubstDirOnWindows
 import common.substDirOnWindows
-import jetbrains.buildServer.configs.kotlin.v2019_2.BuildType
-import jetbrains.buildServer.configs.kotlin.v2019_2.ParameterDisplay
-import jetbrains.buildServer.configs.kotlin.v2019_2.ParametrizedWithType
+import jetbrains.buildServer.configs.kotlin.BuildType
+import jetbrains.buildServer.configs.kotlin.ParameterDisplay
+import jetbrains.buildServer.configs.kotlin.ParametrizedWithType
 
 abstract class AdHocPerformanceScenario(os: Os, arch: Arch = Arch.AMD64) : BuildType({
     val id = "Util_Performance_AdHocPerformanceScenario${os.asName()}${arch.asName()}"
@@ -42,8 +42,8 @@ abstract class AdHocPerformanceScenario(os: Os, arch: Arch = Arch.AMD64) : Build
         )
         param("channel", "adhoc")
         param("checks", "all")
-        text("runs", "10", display = ParameterDisplay.PROMPT, allowEmpty = false)
-        text("warmups", "3", display = ParameterDisplay.PROMPT, allowEmpty = false)
+        text("runs", "40", display = ParameterDisplay.PROMPT, allowEmpty = false)
+        text("warmups", "10", display = ParameterDisplay.PROMPT, allowEmpty = false)
         text(
             "scenario",
             "",
@@ -90,6 +90,7 @@ abstract class AdHocPerformanceScenario(os: Os, arch: Arch = Arch.AMD64) : Build
                     "%performance.baselines%",
                     """--warmups %warmups% --runs %runs% --checks %checks% --channel %channel% --profiler %profiler% %additional.gradle.parameters%""",
                     os,
+                    arch,
                     "%testJavaVersion%",
                     "%testJavaVendor%",
                 ) + buildToolGradleParameters(isContinue = false)
@@ -114,4 +115,4 @@ fun ParametrizedWithType.profilerParam(defaultProfiler: String) {
 object AdHocPerformanceScenarioLinux : AdHocPerformanceScenario(Os.LINUX)
 object AdHocPerformanceScenarioWindows : AdHocPerformanceScenario(Os.WINDOWS)
 object AdHocPerformanceScenarioMacOS : AdHocPerformanceScenario(Os.MACOS, Arch.AMD64)
-object AdHocPerformanceScenarioMacM1 : AdHocPerformanceScenario(Os.MACOS, Arch.AARCH64)
+object AdHocPerformanceScenarioMacAppleSilicon : AdHocPerformanceScenario(Os.MACOS, Arch.AARCH64)

@@ -22,10 +22,11 @@ import org.gradle.test.fixtures.Flaky
 import org.gradle.test.fixtures.file.LeaksFileHandles
 import org.gradle.tooling.model.kotlin.dsl.KotlinDslScriptModel
 import org.gradle.tooling.model.kotlin.dsl.KotlinDslScriptsModel
+import org.gradle.util.GradleVersion
 
 import java.lang.reflect.Proxy
 
-import static org.gradle.kotlin.dsl.tooling.builders.KotlinScriptModelParameters.setModelParameters
+import static org.gradle.kotlin.dsl.tooling.fixtures.KotlinScriptModelParameters.setModelParameters
 
 @TargetGradleVersion(">=6.0")
 @LeaksFileHandles("Kotlin Compiler Daemon taking time to shut down")
@@ -38,11 +39,11 @@ class KotlinDslScriptsModelCrossVersionSpec extends AbstractKotlinDslScriptsMode
         toolingApi.requireIsolatedUserHome()
 
         and:
+        maybeExpectAccessorsDeprecation()
         def spec = withMultiProjectBuildWithBuildSrc()
 
-
         when:
-        def model = loadValidatedToolingModel(KotlinDslScriptsModel) {
+        def model = loadToolingModel(KotlinDslScriptsModel) {
             setModelParameters(it, false, true, [])
         }
 
@@ -68,14 +69,15 @@ class KotlinDslScriptsModelCrossVersionSpec extends AbstractKotlinDslScriptsMode
         buildFileKts << ""
 
         when:
-        def model = loadValidatedToolingModel(KotlinDslScriptsModel) {
+        def model = loadToolingModel(KotlinDslScriptsModel) {
             setModelParameters(it, true, true, [buildFileKts])
         }
-
+        def source = Proxy.getInvocationHandler(model).sourceObject
 
         then:
-        def source = Proxy.getInvocationHandler(model).sourceObject
-        source.scripts == [buildFileKts]
+        if (targetVersion.baseVersion < GradleVersion.version("8.6")) {
+            assert source.scripts == [buildFileKts]
+        }
 
         and:
         def commonModel = source.commonModel
@@ -98,5 +100,11 @@ class KotlinDslScriptsModelCrossVersionSpec extends AbstractKotlinDslScriptsMode
         buildFileKtsModel.implicitImports.isEmpty()
         buildFileKtsModel.editorReports.isEmpty()
         buildFileKtsModel.exceptions.isEmpty()
+    }
+
+    void maybeExpectAccessorsDeprecation() {
+        if (targetVersion >= GradleVersion.version("7.6") && targetVersion < GradleVersion.version("8.0")) {
+            expectDocumentedDeprecationWarning("Non-strict accessors generation for Kotlin DSL precompiled script plugins has been deprecated. This will change in Gradle 9.0. Strict accessor generation will become the default. To opt in to the strict behavior, set the 'org.gradle.kotlin.dsl.precompiled.accessors.strict' system property to `true`. Consult the upgrading guide for further information: https://docs.gradle.org/current/userguide/upgrading_version_7.html#strict-kotlin-dsl-precompiled-scripts-accessors")
+        }
     }
 }

@@ -20,7 +20,8 @@ import org.gradle.internal.instrumentation.api.annotations.InterceptGroovyCalls;
 import org.gradle.internal.instrumentation.api.annotations.InterceptJvmCalls;
 import org.gradle.internal.instrumentation.api.annotations.SpecificGroovyCallInterceptors;
 import org.gradle.internal.instrumentation.api.annotations.SpecificJvmCallInterceptors;
-import org.gradle.internal.instrumentation.api.annotations.UpgradedProperty;
+import org.gradle.internal.instrumentation.api.annotations.ReplacesEagerProperty;
+import org.gradle.internal.instrumentation.api.annotations.ToBeReplacedByLazyProperty;
 import org.gradle.internal.instrumentation.api.annotations.VisitForInstrumentation;
 import org.gradle.internal.instrumentation.extensions.property.PropertyUpgradeAnnotatedMethodReader;
 import org.gradle.internal.instrumentation.extensions.property.PropertyUpgradeClassSourceGenerator;
@@ -54,18 +55,28 @@ public class ConfigurationCacheInstrumentationProcessor extends AbstractInstrume
     @Override
     protected Collection<InstrumentationProcessorExtension> getExtensions() {
         return Arrays.asList(
-            (ClassLevelAnnotationsContributor) () -> Arrays.asList(SpecificJvmCallInterceptors.class, SpecificGroovyCallInterceptors.class, VisitForInstrumentation.class, UpgradedProperty.class),
+            (ClassLevelAnnotationsContributor) () -> Arrays.asList(
+                SpecificJvmCallInterceptors.class,
+                SpecificGroovyCallInterceptors.class,
+                VisitForInstrumentation.class,
+                ReplacesEagerProperty.class,
+                ToBeReplacedByLazyProperty.class
+            ),
 
             new AnnotationCallInterceptionRequestReaderImpl(),
 
             new WithExtensionReferencesReader(),
             new WithExtensionReferencesPostProcessor(),
-            new AddGeneratedClassNameFlagFromClassLevelAnnotation(
+            new AddGeneratedClassNameFlagFromClassLevelAnnotation(processingEnv.getElementUtils(),
                 ifHasExtraOfType(WithExtensionReferencesExtra.ProducedSynthetically.class), SpecificJvmCallInterceptors.class, RequestExtra.InterceptJvmCalls::new
             ),
 
-            new AddGeneratedClassNameFlagFromClassLevelAnnotation(ifHasAnnotation(InterceptJvmCalls.class), SpecificJvmCallInterceptors.class, RequestExtra.InterceptJvmCalls::new),
-            new AddGeneratedClassNameFlagFromClassLevelAnnotation(ifHasAnnotation(InterceptGroovyCalls.class), SpecificGroovyCallInterceptors.class, RequestExtra.InterceptGroovyCalls::new),
+            new AddGeneratedClassNameFlagFromClassLevelAnnotation(processingEnv.getElementUtils(),
+                ifHasAnnotation(InterceptJvmCalls.class), SpecificJvmCallInterceptors.class, RequestExtra.InterceptJvmCalls::new
+            ),
+            new AddGeneratedClassNameFlagFromClassLevelAnnotation(processingEnv.getElementUtils(),
+                ifHasAnnotation(InterceptGroovyCalls.class), SpecificGroovyCallInterceptors.class, RequestExtra.InterceptGroovyCalls::new
+            ),
 
             (CodeGeneratorContributor) InterceptJvmCallsGenerator::new,
             // Generate META-INF/services resource with factories for all generated InterceptJvmCallsGenerator

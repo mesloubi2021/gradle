@@ -41,6 +41,7 @@ class TaskReportTaskIntegrationTest extends AbstractIntegrationSpec {
 Build Setup tasks
 -----------------
 init - Initializes a new Gradle build.
+updateDaemonJvm - Generates or updates the Gradle Daemon JVM criteria.
 wrapper - Generates Gradle wrapper files.
 
 Help tasks
@@ -73,6 +74,7 @@ tasks - Displays the tasks runnable from root project '$projectName'.""")
 Build Setup tasks
 -----------------
 init (org.gradle.buildinit.tasks.InitBuild) - Initializes a new Gradle build.
+updateDaemonJvm (org.gradle.buildconfiguration.tasks.UpdateDaemonJvm) - Generates or updates the Gradle Daemon JVM criteria.
 wrapper (org.gradle.api.tasks.wrapper.Wrapper) - Generates Gradle wrapper files.
 
 Help tasks
@@ -305,6 +307,7 @@ Tasks runnable from root project 'test'
 Build Setup tasks
 -----------------
 init - Initializes a new Gradle build.
+updateDaemonJvm - Generates or updates the Gradle Daemon JVM criteria.
 wrapper - Generates Gradle wrapper files.
 
 To see all tasks and more detail, run gradle tasks --all
@@ -333,6 +336,7 @@ Tasks runnable from root project 'test'
 Build Setup tasks
 -----------------
 init - Initializes a new Gradle build.
+updateDaemonJvm - Generates or updates the Gradle Daemon JVM criteria.
 wrapper - Generates Gradle wrapper files.
 
 To see all tasks and more detail, run gradle tasks --all
@@ -384,6 +388,7 @@ To see more detail about a task, run gradle help --task <task>
     def "renders tasks in a multi-project build running [tasks]"() {
         given:
         buildFile << multiProjectBuild()
+        createDirs("sub1", "sub2")
         settingsFile << "include 'sub1', 'sub2'"
 
         when:
@@ -403,6 +408,7 @@ c
     def "renders tasks in a multi-project build running [tasks, --all]"() {
         given:
         buildFile << multiProjectBuild()
+        createDirs("sub1", "sub2")
         settingsFile << "include 'sub1', 'sub2'"
 
         when:
@@ -454,7 +460,7 @@ alpha - ALPHA_in_sub1
 
     def "task report includes tasks defined via model rules running #tasks"() {
         when:
-        buildScript """
+        buildFile """
             model {
                 tasks {
                     create('a') {
@@ -483,7 +489,7 @@ alpha - ALPHA_in_sub1
 
     def "task report includes tasks with dependencies defined via model rules running #tasks"() {
         when:
-        buildScript """
+        buildFile """
             model {
                 tasks {
                     create('a')
@@ -511,7 +517,7 @@ b
 
     def "task report includes task container rule based tasks defined via model rule"() {
         when:
-        buildScript """
+        buildFile """
             tasks.addRule("Pattern: containerRule<ID>") { taskName ->
                 if (taskName.startsWith("containerRule")) {
                     task(taskName) {
@@ -561,7 +567,7 @@ b
     def "renders tasks with dependencies created by model rules running #tasks"() {
         when:
         settingsFile << "rootProject.name = 'test-project'"
-        buildScript """
+        buildFile """
             model {
                 tasks {
                     create('a')
@@ -607,6 +613,7 @@ model - Displays the configuration model of root project 'test-project'. [deprec
         given:
         buildFile << multiProjectBuild()
         def projects = (1..100).collect {"project$it"}
+        createDirs(projects as String[])
         settingsFile << "include '${projects.join("', '")}'"
 
         expect:

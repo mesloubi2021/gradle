@@ -16,40 +16,54 @@
 
 plugins {
     id("gradlebuild.distribution.api-java")
+    id("gradlebuild.instrumented-java-project")
 }
 
 description = "Contains a basic JVM plugin used to compile, test, and assemble Java source; often applied by other JVM plugins (though named java-base, jvm-base would be a more proper name)."
 
+errorprone {
+    disabledChecks.addAll(
+        "UnusedMethod", // 1 occurrences
+    )
+}
+
 dependencies {
-    implementation(project(":base-services"))
-    implementation(project(":core-api"))
-    implementation(project(":core"))
-    implementation(project(":dependency-management"))
-    implementation(project(":diagnostics"))
-    implementation(project(":execution"))
-    implementation(project(":file-collections"))
-    implementation(project(":language-java"))
-    implementation(project(":language-jvm"))
-    implementation(project(":logging"))
-    implementation(project(":model-core"))
-    implementation(project(":platform-base"))
-    implementation(project(":platform-jvm"))
-    implementation(project(":reporting"))
-    implementation(project(":testing-base"))
-    implementation(project(":testing-jvm"))
-    implementation(project(":toolchains-jvm"))
+    api(projects.stdlibJavaExtensions)
+    api(projects.serviceProvider)
+    api(projects.baseServices)
+    api(projects.core)
+    api(projects.coreApi)
+    api(projects.dependencyManagement)
+    api(projects.languageJava)
+    api(projects.languageJvm)
+    api(projects.modelCore)
+    api(projects.platformJvm)
+    api(projects.toolchainsJvmShared)
+
+    api(libs.groovy)
+    api(libs.inject)
+    api(libs.jsr305)
+
+    implementation(projects.fileCollections)
+    implementation(projects.logging)
+    implementation(projects.platformBase)
+    implementation(projects.reporting)
+    implementation(projects.testingBase)
+    implementation(projects.testingJvm)
+    implementation(projects.toolchainsJvm)
+    implementation(projects.serviceLookup)
 
     implementation(libs.commonsLang)
-    implementation(libs.groovy)
     implementation(libs.guava)
-    implementation(libs.inject)
 
-    testImplementation(testFixtures(project(":core")))
+    runtimeOnly(projects.diagnostics)
 
-    integTestDistributionRuntimeOnly(project(":distributions-jvm"))
+    testImplementation(testFixtures(projects.core))
 
-    testFixturesImplementation(project(":internal-integ-testing"))
-    testFixturesImplementation(project(":logging"))
+    integTestDistributionRuntimeOnly(projects.distributionsJvm)
+
+    testFixturesImplementation(projects.internalIntegTesting)
+    testFixturesImplementation(projects.logging)
 }
 
 packageCycles {
@@ -57,3 +71,6 @@ packageCycles {
 }
 
 integTest.usesJavadocCodeSnippets.set(true)
+tasks.isolatedProjectsIntegTest {
+    enabled = false
+}

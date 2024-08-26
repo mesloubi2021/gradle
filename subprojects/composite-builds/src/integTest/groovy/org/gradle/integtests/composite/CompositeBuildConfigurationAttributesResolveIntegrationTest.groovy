@@ -31,6 +31,7 @@ class CompositeBuildConfigurationAttributesResolveIntegrationTest extends Abstra
 
     def "context travels to transitive dependencies"() {
         given:
+        createDirs("a", "b", "includedBuild")
         file('settings.gradle') << """
             include 'a', 'b'
             includeBuild 'includedBuild'
@@ -138,6 +139,7 @@ class CompositeBuildConfigurationAttributesResolveIntegrationTest extends Abstra
         mavenRepo.module('com.acme.external', 'external', '1.2')
             .dependsOn('com.acme.external', 'c', '0.1')
             .publish()
+        createDirs("a", "b", "includedBuild")
         file('settings.gradle') << """
             include 'a', 'b'
             includeBuild 'includedBuild'
@@ -252,6 +254,7 @@ class CompositeBuildConfigurationAttributesResolveIntegrationTest extends Abstra
         ivyRepo.module('com.acme.external', 'external', '1.2')
             .dependsOn('com.acme.external', 'c', '0.1')
             .publish()
+        createDirs("a", "b", "includedBuild")
         file('settings.gradle') << """
             include 'a', 'b'
             includeBuild 'includedBuild'
@@ -363,6 +366,7 @@ class CompositeBuildConfigurationAttributesResolveIntegrationTest extends Abstra
 
     def "attribute values are matched across builds - #type"() {
         given:
+        createDirs("a", "b", "includedBuild")
         file('settings.gradle') << """
             include 'a', 'b'
             includeBuild 'includedBuild'
@@ -478,6 +482,7 @@ class CompositeBuildConfigurationAttributesResolveIntegrationTest extends Abstra
 
     def "compatibility and disambiguation rules can be defined by consuming build"() {
         given:
+        createDirs("a", "b", "includedBuild")
         file('settings.gradle') << """
             include 'a', 'b'
             includeBuild 'includedBuild'
@@ -603,6 +608,7 @@ class CompositeBuildConfigurationAttributesResolveIntegrationTest extends Abstra
 
     def "reports failure to resolve due to incompatible attribute values"() {
         given:
+        createDirs("a", "b", "includedBuild")
         file('settings.gradle') << """
             include 'a', 'b'
             includeBuild 'includedBuild'
@@ -687,9 +693,9 @@ class CompositeBuildConfigurationAttributesResolveIntegrationTest extends Abstra
         then:
         failure.assertHasCause("Could not resolve com.acme.external:external:1.0.")
         failure.assertHasCause("""No matching variant of project :includedBuild was found. The consumer was configured to find attribute 'flavor' with value 'free' but:
-  - Variant 'bar' capability com.acme.external:external:2.0-SNAPSHOT:
+  - Variant 'bar':
       - Incompatible because this component declares attribute 'flavor' with value 'blue' and the consumer needed attribute 'flavor' with value 'free'
-  - Variant 'foo' capability com.acme.external:external:2.0-SNAPSHOT:
+  - Variant 'foo':
       - Incompatible because this component declares attribute 'flavor' with value 'red' and the consumer needed attribute 'flavor' with value 'free'""")
 
         when:
@@ -701,8 +707,8 @@ class CompositeBuildConfigurationAttributesResolveIntegrationTest extends Abstra
   - bar
   - foo
 All of them match the consumer attributes:
-  - Variant 'bar' capability com.acme.external:external:2.0-SNAPSHOT declares attribute 'flavor' with value 'blue'
-  - Variant 'foo' capability com.acme.external:external:2.0-SNAPSHOT declares attribute 'flavor' with value 'red'""")
+  - Variant 'bar' capability 'com.acme.external:external:2.0-SNAPSHOT' declares attribute 'flavor' with value 'blue'
+  - Variant 'foo' capability 'com.acme.external:external:2.0-SNAPSHOT' declares attribute 'flavor' with value 'red'""")
     }
 
     def "context travels down to transitive dependencies with typed attributes using plugin"() {
@@ -712,6 +718,7 @@ All of them match the consumer attributes:
         buildTypedAttributesPlugin('1.1')
 
         given:
+        createDirs("a", "b", "includedBuild")
         settingsFile.text = """
             pluginManagement {
                 repositories {
@@ -912,7 +919,7 @@ All of them match the consumer attributes:
                         com {
                             acme {
                                 'Flavor.groovy'('package com.acme; enum Flavor { free, paid }')
-                                'BuildType.groovy'('package com.acme; enum BuildType { debug, release }')
+                                'BuildType.groovy'('package com.acme; enum BuildType { debug {}, release {} }')
                                 'TypedAttributesPlugin.groovy'('''package com.acme
 
                                     import org.gradle.api.Plugin

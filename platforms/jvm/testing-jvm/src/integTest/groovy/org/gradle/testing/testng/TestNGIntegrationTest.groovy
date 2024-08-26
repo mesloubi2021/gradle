@@ -19,6 +19,7 @@ package org.gradle.testing.testng
 import org.gradle.integtests.fixtures.DefaultTestExecutionResult
 import org.gradle.integtests.fixtures.MultiVersionIntegrationSpec
 import org.gradle.integtests.fixtures.TargetCoverage
+import org.gradle.testing.fixture.MultiJvmTestCompatibility
 import org.gradle.testing.fixture.TestNGCoverage
 import spock.lang.Ignore
 import spock.lang.Issue
@@ -43,7 +44,7 @@ class TestNGIntegrationTest extends MultiVersionIntegrationSpec {
                 environment.TEST_ENV_VAR = 'value'
             }
         """.stripIndent()
-        file('src/test/java/org/gradle/OkTest.java') << '''
+        file('src/test/java/org/gradle/OkTest.java') << """
             package org.gradle;
 
             import static org.testng.Assert.*;
@@ -73,10 +74,10 @@ class TestNGIntegrationTest extends MultiVersionIntegrationSpec {
 
                     // check other environmental stuff
                     assertEquals("Test worker", Thread.currentThread().getName());
-                    assertNull(System.console());
+                    ${MultiJvmTestCompatibility.CONSOLE_CHECK}
                 }
             }
-        '''.stripIndent()
+        """.stripIndent()
 
         when:
         succeeds 'test'
@@ -186,6 +187,38 @@ class TestNGIntegrationTest extends MultiVersionIntegrationSpec {
         def result = new DefaultTestExecutionResult(testDirectory)
         result.assertTestClassesExecuted('org.gradle.groups.SomeTest')
         result.testClass('org.gradle.groups.SomeTest').assertTestsExecuted("databaseTest")
+    }
+
+    def "does not emit deprecation warning about no tests executed when groups are specified"() {
+        buildFile << """
+            test {
+                useTestNG {
+                    ${configureIncludeOrExcludeGroups}
+                }
+            }
+        """.stripIndent()
+        file('src/test/java/org/gradle/groups/SomeTest.java') << '''
+            package org.gradle.groups;
+            import org.testng.annotations.Test;
+
+            public class SomeTest {
+                @Test(groups = "database")
+                public void databaseTest() {}
+
+                @Test(groups = {"database", "slow"})
+                public void slowDatabaseTest() {}
+            }
+        '''.stripIndent()
+
+        when:
+        succeeds 'test'
+
+        then:
+        def result = new DefaultTestExecutionResult(testDirectory)
+        result.assertNoTestClassesExecuted()
+
+        where:
+        configureIncludeOrExcludeGroups << ["includeGroups 'notDatabase'", "excludeGroups 'database'"]
     }
 
     def "supports test factory"() {

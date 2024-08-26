@@ -21,7 +21,6 @@ import com.google.common.collect.ImmutableSortedMap
 import org.gradle.caching.internal.origin.OriginMetadata
 import org.gradle.internal.Try
 import org.gradle.internal.execution.history.AfterExecutionState
-import org.gradle.internal.execution.history.BeforeExecutionState
 import org.gradle.internal.execution.history.PreviousExecutionState
 import org.gradle.internal.execution.history.changes.ExecutionStateChanges
 
@@ -52,7 +51,6 @@ class SkipUpToDateStepTest extends StepSpec<IncrementalChangesContext> {
 
         _ * context.changes >> Optional.of(changes)
         _ * context.rebuildReasons >> ImmutableList.of()
-        1 * changes.beforeExecutionState >> Mock(BeforeExecutionState)
         _ * context.previousExecutionState >> Optional.of(Stub(PreviousExecutionState) {
             getOutputFilesProducedByWork() >> ImmutableSortedMap.of()
             getOriginMetadata() >> delegateOriginMetadata
@@ -65,7 +63,7 @@ class SkipUpToDateStepTest extends StepSpec<IncrementalChangesContext> {
         def delegateAfterExecutionState = Stub(AfterExecutionState)
 
         delegateResult.execution >> delegateOutcome
-        delegateResult.afterExecutionState >> Optional.of(delegateAfterExecutionState)
+        delegateResult.afterExecutionOutputState >> Optional.of(delegateAfterExecutionState)
 
         when:
         def result = step.execute(work, context)
@@ -87,7 +85,7 @@ class SkipUpToDateStepTest extends StepSpec<IncrementalChangesContext> {
         0 * _
 
         when:
-        def afterExecutionState = result.afterExecutionState
+        def afterExecutionState = result.afterExecutionOutputState
 
         then:
         afterExecutionState.get() == delegateAfterExecutionState

@@ -27,7 +27,7 @@ import java.util.concurrent.Callable;
 /**
  * A provider whose value is computed by a {@link Callable}.
  *
- * <h3>Configuration Cache Behavior</h3>
+ * <h2>Configuration Cache Behavior</h2>
  * <b>Eager</b>. The value is computed at store time and loaded from the cache.
  */
 public class DefaultProvider<T> extends AbstractMinimalProvider<T> {
@@ -68,7 +68,7 @@ public class DefaultProvider<T> extends AbstractMinimalProvider<T> {
 
     @Override
     protected Value<? extends T> calculateOwnValue(ValueConsumer consumer) {
-        try {
+        try (EvaluationContext.ScopeContext ignored = openScope()) {
             return Value.ofNullable(value.call());
         } catch (Exception e) {
             throw UncheckedException.throwAsUncheckedException(e);

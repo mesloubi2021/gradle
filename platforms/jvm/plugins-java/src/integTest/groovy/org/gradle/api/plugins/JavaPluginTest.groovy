@@ -474,23 +474,26 @@ class JavaPluginTest extends AbstractProjectBuilderSpec {
         project.pluginManager.apply(JavaPlugin)
         commonProject.pluginManager.apply(JavaPlugin)
         commonProject.group = "group"
-        commonProject.extensions.configure(JavaPluginExtension) {
-            it.registerFeature("other") {
-                it.usingSourceSet(commonProject.sourceSets.main)
+        commonProject.extensions.configure(JavaPluginExtension) { java ->
+            java.sourceSets.create("other")
+            java.registerFeature("other") {
+                it.usingSourceSet(java.sourceSets.other)
             }
         }
         middleProject.pluginManager.apply(JavaPlugin)
         middleProject.group = "group"
-        middleProject.extensions.configure(JavaPluginExtension) {
-            it.registerFeature("other") {
-                it.usingSourceSet(middleProject.sourceSets.main)
+        middleProject.extensions.configure(JavaPluginExtension) { java ->
+            java.sourceSets.create("other")
+            java.registerFeature("other") {
+                it.usingSourceSet(java.sourceSets.other)
             }
         }
         appProject.pluginManager.apply(JavaPlugin)
         appProject.group = "group"
-        appProject.extensions.configure(JavaPluginExtension) {
-            it.registerFeature("other") {
-                it.usingSourceSet(appProject.sourceSets.main)
+        appProject.extensions.configure(JavaPluginExtension) { java ->
+            java.sourceSets.create("other")
+            java.registerFeature("other") {
+                it.usingSourceSet(java.sourceSets.other)
             }
         }
 
@@ -542,7 +545,7 @@ class JavaPluginTest extends AbstractProjectBuilderSpec {
         then:
         def compileTask = project.tasks.named("compileCustomJava", JavaCompile).get()
         def configuredToolchain = compileTask.javaCompiler.get().javaToolchain
-        configuredToolchain.displayName.contains(someJdk.javaVersion.getMajorVersion())
+        configuredToolchain.javaVersion.toString().contains(someJdk.javaVersion.getMajorVersion())
     }
 
     def "source and target compatibility are configured if toolchain is configured"() {
@@ -569,7 +572,7 @@ class JavaPluginTest extends AbstractProjectBuilderSpec {
         def configuredJavaLauncher = testTask.javaLauncher.get()
 
         then:
-        configuredJavaLauncher.executablePath.toString().contains(someJdk.javaVersion.getMajorVersion())
+        configuredJavaLauncher.metadata.languageVersion.toString().contains(someJdk.javaVersion.getMajorVersion())
     }
 
     def "wires toolchain for javadoc if toolchain is configured"() {

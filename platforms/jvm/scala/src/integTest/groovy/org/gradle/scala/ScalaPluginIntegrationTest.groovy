@@ -32,8 +32,10 @@ class ScalaPluginIntegrationTest extends MultiVersionIntegrationSpec {
 
     @Issue("https://issues.gradle.org/browse/GRADLE-3094")
     def "can apply scala plugin"() {
-        file("build.gradle") << """
-            apply plugin: "scala"
+        buildFile << """
+            plugins {
+                id("scala")
+            }
 
             task someTask
         """
@@ -44,6 +46,7 @@ class ScalaPluginIntegrationTest extends MultiVersionIntegrationSpec {
 
     @Issue("https://github.com/gradle/gradle/issues/6558")
     def "can build in parallel with lazy tasks"() {
+        createDirs("a", "b", "c", "d")
         settingsFile << """
             include 'a', 'b', 'c', 'd'
         """
@@ -87,6 +90,7 @@ class ScalaPluginIntegrationTest extends MultiVersionIntegrationSpec {
 
     @Issue("https://github.com/gradle/gradle/issues/6735")
     def "can depend on the source set of another Java project"() {
+        createDirs("java", "scala")
         settingsFile << """
             include 'java', 'scala'
         """
@@ -119,6 +123,7 @@ class ScalaPluginIntegrationTest extends MultiVersionIntegrationSpec {
 
     @Issue("https://github.com/gradle/gradle/issues/6750")
     def "can depend on Scala project from other project"() {
+        createDirs("other", "scala")
         settingsFile << """
             include 'other', 'scala'
         """
@@ -135,9 +140,10 @@ class ScalaPluginIntegrationTest extends MultiVersionIntegrationSpec {
                     conf(project(":scala"))
                 }
                 task resolve {
-                    dependsOn configurations.conf
+                    def conf = configurations.conf
+                    dependsOn conf
                     doLast {
-                        println configurations.conf.files
+                        println conf.files
                     }
                 }
             }
@@ -159,6 +165,7 @@ class ScalaPluginIntegrationTest extends MultiVersionIntegrationSpec {
 
     @Issue("https://github.com/gradle/gradle/issues/7014")
     def "can use Scala with war and ear plugins"() {
+        createDirs("war", "ear")
         settingsFile << """
             include 'war', 'ear'
         """
@@ -197,7 +204,9 @@ class ScalaPluginIntegrationTest extends MultiVersionIntegrationSpec {
             rootProject.name = "scala"
         """
         buildFile << """
-            apply plugin: 'scala'
+            plugins {
+                id("scala")
+            }
 
             ${mavenCentralRepository()}
             dependencies {
@@ -224,7 +233,9 @@ class ScalaPluginIntegrationTest extends MultiVersionIntegrationSpec {
             rootProject.name = "scala"
         """
         buildFile << """
-            apply plugin: 'scala'
+            plugins {
+                id("scala")
+            }
 
             ${mavenCentralRepository()}
 
@@ -244,8 +255,10 @@ class ScalaPluginIntegrationTest extends MultiVersionIntegrationSpec {
     @Issue("gradle/gradle#19300")
     def 'show that log4j-core, if present, is 2_17_1 at the minimum'() {
         given:
-        file('build.gradle') << """
-            apply plugin: 'scala'
+        buildFile << """
+            plugins {
+                id("scala")
+            }
 
             ${mavenCentralRepository()}
         """
@@ -263,7 +276,7 @@ class ScalaPluginIntegrationTest extends MultiVersionIntegrationSpec {
     def "Scala compiler daemon respects keepalive option"() {
         buildFile << """
             plugins {
-                id 'scala'
+                id("scala")
             }
 
             ${mavenCentralRepository()}
@@ -290,5 +303,40 @@ class ScalaPluginIntegrationTest extends MultiVersionIntegrationSpec {
         then:
         succeeds(':compileScala', '--info')
         postBuildOutputDoesNotContain('Stopped 1 worker daemon')
+    }
+
+    def "Map-accepting methods are deprecated"() {
+        buildFile << """
+            plugins {
+                id("scala")
+            }
+
+            ${mavenCentralRepository()}
+
+            tasks.compileScala {
+                options.define([:])
+                options.fork([:])
+                options.debug([:])
+                options.forkOptions.define([:])
+                options.debugOptions.define([:])
+                scalaCompileOptions.define([:])
+                scalaCompileOptions.forkOptions.define([:])
+            }
+
+            tasks.scaladoc {
+                scalaDocOptions.define([:])
+            }
+        """
+
+        expect:
+        executer.expectDocumentedDeprecationWarning("The AbstractOptions.define(Map) method has been deprecated. This is scheduled to be removed in Gradle 9.0. Consult the upgrading guide for further information: https://docs.gradle.org/current/userguide/upgrading_version_8.html#deprecated_abstract_options")
+        executer.expectDocumentedDeprecationWarning("The CompileOptions.fork(Map) method has been deprecated. This is scheduled to be removed in Gradle 9.0. Set properties directly on the 'forkOptions' property instead. Consult the upgrading guide for further information: https://docs.gradle.org/current/userguide/upgrading_version_8.html#deprecated_abstract_options")
+        executer.expectDocumentedDeprecationWarning("The CompileOptions.debug(Map) method has been deprecated. This is scheduled to be removed in Gradle 9.0. Set properties directly on the 'debugOptions' property instead. Consult the upgrading guide for further information: https://docs.gradle.org/current/userguide/upgrading_version_8.html#deprecated_abstract_options")
+        executer.expectDocumentedDeprecationWarning("The AbstractOptions.define(Map) method has been deprecated. This is scheduled to be removed in Gradle 9.0. Consult the upgrading guide for further information: https://docs.gradle.org/current/userguide/upgrading_version_8.html#deprecated_abstract_options")
+        executer.expectDocumentedDeprecationWarning("The AbstractOptions.define(Map) method has been deprecated. This is scheduled to be removed in Gradle 9.0. Consult the upgrading guide for further information: https://docs.gradle.org/current/userguide/upgrading_version_8.html#deprecated_abstract_options")
+        executer.expectDocumentedDeprecationWarning("The AbstractOptions.define(Map) method has been deprecated. This is scheduled to be removed in Gradle 9.0. Consult the upgrading guide for further information: https://docs.gradle.org/current/userguide/upgrading_version_8.html#deprecated_abstract_options")
+        executer.expectDocumentedDeprecationWarning("The AbstractOptions.define(Map) method has been deprecated. This is scheduled to be removed in Gradle 9.0. Consult the upgrading guide for further information: https://docs.gradle.org/current/userguide/upgrading_version_8.html#deprecated_abstract_options")
+        executer.expectDocumentedDeprecationWarning("The AbstractOptions.define(Map) method has been deprecated. This is scheduled to be removed in Gradle 9.0. Consult the upgrading guide for further information: https://docs.gradle.org/current/userguide/upgrading_version_8.html#deprecated_abstract_options")
+        succeeds("compileScala", "scaladoc")
     }
 }

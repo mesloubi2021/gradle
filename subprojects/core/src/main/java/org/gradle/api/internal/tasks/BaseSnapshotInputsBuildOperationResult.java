@@ -25,13 +25,12 @@ import org.gradle.api.NonNullApi;
 import org.gradle.caching.BuildCacheKey;
 import org.gradle.internal.execution.caching.CachingState;
 import org.gradle.internal.execution.history.BeforeExecutionState;
-import org.gradle.internal.execution.history.InputExecutionState;
+import org.gradle.internal.execution.history.ExecutionInputState;
 import org.gradle.internal.execution.model.InputNormalizer;
 import org.gradle.internal.fingerprint.DirectorySensitivity;
 import org.gradle.internal.fingerprint.FileNormalizer;
 import org.gradle.internal.fingerprint.LineEndingSensitivity;
 import org.gradle.internal.hash.HashCode;
-import org.gradle.internal.hash.Hasher;
 import org.gradle.internal.hash.Hashing;
 import org.gradle.internal.operations.trace.CustomOperationTraceSerialization;
 import org.gradle.internal.scan.UsedByScanPlugin;
@@ -68,21 +67,17 @@ public abstract class BaseSnapshotInputsBuildOperationResult implements CustomOp
     @Nullable
     public Map<String, byte[]> getInputValueHashesBytes() {
         return getBeforeExecutionState()
-            .map(InputExecutionState::getInputProperties)
+            .map(ExecutionInputState::getInputProperties)
             .filter(inputValueFingerprints -> !inputValueFingerprints.isEmpty())
             .map(inputValueFingerprints -> inputValueFingerprints.entrySet().stream()
-                .collect(toLinkedHashMap(valueSnapshot -> {
-                    Hasher hasher = Hashing.newHasher();
-                    valueSnapshot.appendToHasher(hasher);
-                    return hasher.hash().toByteArray();
-                })))
+                .collect(toLinkedHashMap(valueSnapshot -> Hashing.hashHashable(valueSnapshot).toByteArray())))
             .orElse(null);
     }
 
     @Nullable
     public byte[] getClassLoaderHashBytes() {
         return getBeforeExecutionState()
-            .map(InputExecutionState::getImplementation)
+            .map(ExecutionInputState::getImplementation)
             .map(BaseSnapshotInputsBuildOperationResult::getClassLoaderHashBytesOrNull)
             .orElse(null);
     }
@@ -90,7 +85,7 @@ public abstract class BaseSnapshotInputsBuildOperationResult implements CustomOp
     @Nullable
     public String getImplementationClassName() {
         return getBeforeExecutionState()
-            .map(InputExecutionState::getImplementation)
+            .map(ExecutionInputState::getImplementation)
             .map(ImplementationSnapshot::getClassIdentifier)
             .orElse(null);
     }
@@ -199,17 +194,13 @@ public abstract class BaseSnapshotInputsBuildOperationResult implements CustomOp
     }
 
     protected Optional<BeforeExecutionState> getBeforeExecutionState() {
-        return cachingState.fold(
-            enabled -> Optional.of(enabled.getBeforeExecutionState()),
-            CachingState.Disabled::getBeforeExecutionState
-        );
+        return cachingState.getCacheKeyCalculatedState()
+            .map(CachingState.CacheKeyCalculatedState::getBeforeExecutionState);
     }
 
     private Optional<BuildCacheKey> getKey() {
-        return cachingState.fold(
-            enabled -> Optional.of(enabled.getKey()),
-            CachingState.Disabled::getKey
-        );
+        return cachingState.getCacheKeyCalculatedState()
+            .map(CachingState.CacheKeyCalculatedState::getKey);
     }
 
     @UsedByScanPlugin("The value names are used as part of build scan data and cannot be changed - new values can be added")

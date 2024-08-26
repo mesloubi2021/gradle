@@ -3,12 +3,15 @@ plugins {
     id("gradlebuild.publish-public-libraries")
 }
 
-description = "Build operations consumed by the Gradle Enterprise plugin"
+description = "Build operations consumed by the Develocity plugin"
 
 dependencies {
-    api(project(":build-operations"))
-    api(project(":enterprise-workers"))
+    api(projects.buildOperations)
 
-    implementation(project(":base-annotations"))
-    implementation(libs.jsr305)
+    api(libs.jsr305)
+
+    implementation(projects.stdlibJavaExtensions)
+}
+tasks.isolatedProjectsIntegTest {
+    enabled = false
 }

@@ -16,16 +16,20 @@
 
 package org.gradle.buildinit.plugins
 
+import org.gradle.api.JavaVersion
 import org.gradle.buildinit.plugins.fixtures.ScriptDslFixture
+import org.gradle.test.precondition.Requires
+import org.gradle.test.preconditions.UnitTestPreconditions
 
+@Requires(value = UnitTestPreconditions.Jdk22OrEarlier, reason = "Scala cannot compile on Java 23 yet")
 class ScalaLibraryInitIntegrationTest extends AbstractJvmLibraryInitIntegrationSpec {
 
-    public static final String SAMPLE_LIBRARY_CLASS = "some/thing/Library.scala"
-    public static final String SAMPLE_LIBRARY_TEST_CLASS = "some/thing/LibrarySuite.scala"
+    public static final String SAMPLE_LIBRARY_CLASS = "org/example/Library.scala"
+    public static final String SAMPLE_LIBRARY_TEST_CLASS = "org/example/LibrarySuite.scala"
 
     def "creates sample source if no source present with #scriptDsl build scripts"() {
         when:
-        run('init', '--type', 'scala-library', '--dsl', scriptDsl.id)
+        run('init', '--type', 'scala-library', '--dsl', scriptDsl.id, '--java-version', JavaVersion.current().majorVersion)
 
         then:
         subprojectDir.file("src/main/scala").assertHasDescendants(SAMPLE_LIBRARY_CLASS)
@@ -38,7 +42,7 @@ class ScalaLibraryInitIntegrationTest extends AbstractJvmLibraryInitIntegrationS
         run("build")
 
         then:
-        assertTestPassed("some.thing.LibrarySuite", "someLibraryMethod is always true")
+        assertTestPassed("org.example.LibrarySuite", "someLibraryMethod is always true")
 
         where:
         scriptDsl << ScriptDslFixture.SCRIPT_DSLS
@@ -46,7 +50,7 @@ class ScalaLibraryInitIntegrationTest extends AbstractJvmLibraryInitIntegrationS
 
     def "creates sample source with package and #scriptDsl build scripts"() {
         when:
-        run('init', '--type', 'scala-library', '--package', 'my.lib', '--dsl', scriptDsl.id)
+        run('init', '--type', 'scala-library', '--package', 'my.lib', '--dsl', scriptDsl.id, '--java-version', JavaVersion.current().majorVersion)
 
         then:
         subprojectDir.file("src/main/scala").assertHasDescendants("my/lib/Library.scala")
@@ -67,7 +71,7 @@ class ScalaLibraryInitIntegrationTest extends AbstractJvmLibraryInitIntegrationS
 
     def "creates build using test suites with #scriptDsl build scripts when using --incubating"() {
         when:
-        run('init', '--type', 'scala-library', '--package', 'my.lib', '--dsl', scriptDsl.id, '--incubating')
+        run('init', '--type', 'scala-library', '--package', 'my.lib', '--dsl', scriptDsl.id, '--incubating', '--java-version', JavaVersion.current().majorVersion)
 
         then:
         subprojectDir.file("src/main/scala").assertHasDescendants("my/lib/Library.scala")
@@ -89,7 +93,7 @@ class ScalaLibraryInitIntegrationTest extends AbstractJvmLibraryInitIntegrationS
 
     def "creates with gradle.properties when using #scriptDsl build scripts with --incubating"() {
         when:
-        run('init', '--type', 'scala-library', '--package', 'my.lib', '--dsl', scriptDsl.id, '--incubating')
+        run('init', '--type', 'scala-library', '--package', 'my.lib', '--dsl', scriptDsl.id, '--incubating', '--java-version', JavaVersion.current().majorVersion)
 
         then:
         gradlePropertiesGenerated()
@@ -123,7 +127,7 @@ class ScalaLibraryInitIntegrationTest extends AbstractJvmLibraryInitIntegrationS
             """
 
         when:
-        run('init', '--type', 'scala-library', '--dsl', scriptDsl.id)
+        run('init', '--type', 'scala-library', '--dsl', scriptDsl.id, '--overwrite', '--java-version', JavaVersion.current().majorVersion)
 
         then:
         subprojectDir.file("src/main/scala").assertHasDescendants("org/acme/SampleMain.scala")

@@ -18,13 +18,13 @@ package org.gradle.api.file;
 
 import org.gradle.api.Incubating;
 import org.gradle.api.initialization.Settings;
-import org.gradle.internal.service.scopes.Scopes;
+import org.gradle.internal.service.scopes.Scope;
 import org.gradle.internal.service.scopes.ServiceScope;
 
 /**
  * Provides access to important locations for a Gradle build.
  * <p>
- * An instance of this type can be injected into a plugin or other object by
+ * An instance of this type can be injected into a settings plugin by
  * annotating a public constructor or method with {@code javax.inject.Inject}.
  * It is also available via {@link Settings#getLayout()}.
  * <p>
@@ -33,7 +33,7 @@ import org.gradle.internal.service.scopes.ServiceScope;
  * @since 8.5
  */
 @Incubating
-@ServiceScope(Scopes.Build.class)
+@ServiceScope(Scope.Settings.class)
 public interface BuildLayout {
     /**
      * Returns the settings directory.

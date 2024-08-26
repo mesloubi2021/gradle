@@ -26,7 +26,7 @@ import org.gradle.api.internal.StartParameterInternal
 import org.gradle.api.internal.artifacts.DefaultBuildIdentifier
 import org.gradle.initialization.BuildCancellationToken
 import org.gradle.initialization.exception.ExceptionAnalyser
-import org.gradle.initialization.layout.BuildLocations
+import org.gradle.initialization.layout.BuildLayout
 import org.gradle.internal.Actions
 import org.gradle.internal.build.BuildAddedListener
 import org.gradle.internal.build.BuildLifecycleController
@@ -41,7 +41,7 @@ import org.gradle.internal.buildtree.BuildModelParameters
 import org.gradle.internal.buildtree.BuildTreeLifecycleControllerFactory
 import org.gradle.internal.buildtree.BuildTreeState
 import org.gradle.internal.event.ListenerManager
-import org.gradle.internal.operations.BuildOperationExecutor
+import org.gradle.internal.operations.BuildOperationRunner
 import org.gradle.internal.service.DefaultServiceRegistry
 import org.gradle.internal.service.ServiceRegistry
 import org.gradle.internal.service.scopes.GradleUserHomeScopeServiceRegistry
@@ -82,7 +82,7 @@ class DefaultIncludedBuildRegistryTest extends Specification {
         services.add(Stub(WorkerLeaseService))
         services.add(Stub(BuildTreeWorkGraphController))
         services.add(Stub(ExceptionAnalyser))
-        services.add(Stub(BuildOperationExecutor))
+        services.add(Stub(BuildOperationRunner))
         services.add(Stub(BuildStateRegistry))
         services.add(Stub(BuildTreeLifecycleControllerFactory))
         services.add(Stub(BuildModelParameters))
@@ -349,15 +349,15 @@ class DefaultIncludedBuildRegistryTest extends Specification {
     private BuildLifecycleController buildController(SettingsInternal settings, GradleInternal gradle) {
         def buildController = Stub(BuildLifecycleController)
         def services = Stub(ServiceRegistry)
-        def buildLocations = Stub(BuildLocations)
+        def buildLayout = Stub(BuildLayout)
 
         _ * buildController.gradle >> gradle
         if (settings != null) {
             _ * gradle.settings >> settings
         }
         _ * gradle.services >> services
-        _ * services.get(BuildLocations) >> buildLocations
-        _ * buildLocations.rootDirectory >> tmpDir.file("root-dir")
+        _ * services.get(BuildLayout) >> buildLayout
+        _ * buildLayout.rootDirectory >> tmpDir.file("root-dir")
         _ * services.get(PublicBuildPath) >> Stub(PublicBuildPath)
 
         return buildController

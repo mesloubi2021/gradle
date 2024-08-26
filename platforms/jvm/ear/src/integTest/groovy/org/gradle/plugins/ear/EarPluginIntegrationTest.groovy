@@ -320,7 +320,7 @@ ear {
     @Issue("GRADLE-3486")
     def "does not fail when provided with an existing descriptor without a version attribute"() {
         given:
-        buildScript '''
+        buildFile '''
             apply plugin: 'ear'
         '''.stripIndent()
         createDir('src/main/application/META-INF') {
@@ -341,7 +341,7 @@ ear {
 
     def "does not fail when initializeInOrder is null"() {
         given:
-        buildScript '''
+        buildFile '''
             apply plugin: 'ear'
             ear {
                 deploymentDescriptor {
@@ -361,7 +361,7 @@ ear {
     @Issue("GRADLE-3497")
     def "does not fail when provided with an existing descriptor with security roles without description"() {
         given:
-        buildScript '''
+        buildFile '''
             apply plugin: 'ear'
         '''.stripIndent()
         createDir('src/main/application/META-INF') {
@@ -388,7 +388,7 @@ ear {
     @Issue("GRADLE-3497")
     def "does not fail when provided with an existing descriptor with a web module without #missing"() {
         given:
-        buildScript '''
+        buildFile '''
             apply plugin: 'ear'
         '''.stripIndent()
         createDir('src/main/application/META-INF') {
@@ -460,6 +460,7 @@ ear {
 
     def "ear contains runtime classpath of upstream java project"() {
         given:
+        createDirs("a", "b", "c", "d", "e")
         file("settings.gradle") << """
             include "a", "b", "c", "d", "e"
         """
@@ -506,6 +507,7 @@ ear {
 
     def "ear contains runtime classpath of upstream java-library project"() {
         given:
+        createDirs("a", "b", "c", "d", "e")
         file("settings.gradle") << """
             include "a", "b", "c", "d", "e"
         """
@@ -551,7 +553,7 @@ ear {
     }
 
     def "using nested descriptor file name is not allowed"() {
-        buildScript '''
+        buildFile '''
             apply plugin: 'ear'
 
             ear {

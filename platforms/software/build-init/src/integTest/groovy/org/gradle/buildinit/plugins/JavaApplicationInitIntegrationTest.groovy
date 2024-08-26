@@ -16,6 +16,7 @@
 
 package org.gradle.buildinit.plugins
 
+import org.gradle.api.JavaVersion
 import org.gradle.buildinit.plugins.fixtures.ScriptDslFixture
 import org.gradle.buildinit.plugins.internal.modifiers.BuildInitTestFramework
 import org.gradle.test.precondition.Requires
@@ -26,9 +27,9 @@ import static org.gradle.buildinit.plugins.internal.modifiers.BuildInitDsl.KOTLI
 
 class JavaApplicationInitIntegrationTest extends AbstractJvmLibraryInitIntegrationSpec {
 
-    public static final String SAMPLE_APP_CLASS = "some/thing/App.java"
-    public static final String SAMPLE_APP_TEST_CLASS = "some/thing/AppTest.java"
-    public static final String SAMPLE_APP_SPOCK_TEST_CLASS = "some/thing/AppTest.groovy"
+    public static final String SAMPLE_APP_CLASS = "org/example/App.java"
+    public static final String SAMPLE_APP_TEST_CLASS = "org/example/AppTest.java"
+    public static final String SAMPLE_APP_SPOCK_TEST_CLASS = "org/example/AppTest.groovy"
 
     @Override
     String subprojectName() { 'app' }
@@ -45,7 +46,7 @@ class JavaApplicationInitIntegrationTest extends AbstractJvmLibraryInitIntegrati
         def dslFixture = dslFixtureFor(scriptDsl)
 
         when:
-        run('init', '--type', 'java-application', '--dsl', scriptDsl.id)
+        run('init', '--type', 'java-application', '--dsl', scriptDsl.id, '--java-version', JavaVersion.current().majorVersion)
 
         then:
         subprojectDir.file("src/main/java").assertHasDescendants(SAMPLE_APP_CLASS)
@@ -59,7 +60,7 @@ class JavaApplicationInitIntegrationTest extends AbstractJvmLibraryInitIntegrati
         run("build")
 
         then:
-        assertTestPassed("some.thing.AppTest", "appHasAGreeting")
+        assertTestPassed("org.example.AppTest", "appHasAGreeting")
 
         when:
         run("run")
@@ -75,7 +76,7 @@ class JavaApplicationInitIntegrationTest extends AbstractJvmLibraryInitIntegrati
         def dslFixture = dslFixtureFor(scriptDsl)
 
         when:
-        run ('init', '--type', 'java-application', '--dsl', scriptDsl.id, '--incubating')
+        run ('init', '--type', 'java-application', '--dsl', scriptDsl.id, '--incubating', '--java-version', JavaVersion.current().majorVersion)
 
         then:
         subprojectDir.file("src/main/java").assertHasDescendants(SAMPLE_APP_CLASS)
@@ -88,7 +89,7 @@ class JavaApplicationInitIntegrationTest extends AbstractJvmLibraryInitIntegrati
         when:
         run('test')
         then:
-        assertTestPassed("some.thing.AppTest", "appHasAGreeting")
+        assertTestPassed("org.example.AppTest", "appHasAGreeting")
 
         where:
         scriptDsl << ScriptDslFixture.SCRIPT_DSLS
@@ -96,7 +97,7 @@ class JavaApplicationInitIntegrationTest extends AbstractJvmLibraryInitIntegrati
 
     def "creates with gradle.properties when using #scriptDsl build scripts with --incubating"() {
         when:
-        run ('init', '--type', 'java-application', '--dsl', scriptDsl.id, '--incubating')
+        run ('init', '--type', 'java-application', '--dsl', scriptDsl.id, '--incubating', '--java-version', JavaVersion.current().majorVersion)
 
         then:
         gradlePropertiesGenerated()
@@ -105,7 +106,7 @@ class JavaApplicationInitIntegrationTest extends AbstractJvmLibraryInitIntegrati
         succeeds('test')
 
         then:
-        assertTestPassed("some.thing.AppTest", "appHasAGreeting")
+        assertTestPassed("org.example.AppTest", "appHasAGreeting")
 
         where:
         scriptDsl << ScriptDslFixture.SCRIPT_DSLS
@@ -113,7 +114,7 @@ class JavaApplicationInitIntegrationTest extends AbstractJvmLibraryInitIntegrati
 
     def "creates sample source using spock instead of junit with #scriptDsl build scripts"() {
         when:
-        run('init', '--type', 'java-application', '--test-framework', 'spock', '--dsl', scriptDsl.id)
+        run('init', '--type', 'java-application', '--test-framework', 'spock', '--dsl', scriptDsl.id, '--java-version', JavaVersion.current().majorVersion)
 
         then:
         subprojectDir.file("src/main/java").assertHasDescendants(SAMPLE_APP_CLASS)
@@ -127,7 +128,7 @@ class JavaApplicationInitIntegrationTest extends AbstractJvmLibraryInitIntegrati
         run("build")
 
         then:
-        assertTestPassed("some.thing.AppTest", "application has a greeting")
+        assertTestPassed("org.example.AppTest", "application has a greeting")
 
         where:
         scriptDsl << ScriptDslFixture.SCRIPT_DSLS
@@ -135,7 +136,7 @@ class JavaApplicationInitIntegrationTest extends AbstractJvmLibraryInitIntegrati
 
     def "creates sample source using testng instead of junit with #scriptDsl build scripts"() {
         when:
-        run('init', '--type', 'java-application', '--test-framework', 'testng', '--dsl', scriptDsl.id)
+        run('init', '--type', 'java-application', '--test-framework', 'testng', '--dsl', scriptDsl.id, '--java-version', JavaVersion.current().majorVersion)
 
         then:
         subprojectDir.file("src/main/java").assertHasDescendants(SAMPLE_APP_CLASS)
@@ -148,7 +149,7 @@ class JavaApplicationInitIntegrationTest extends AbstractJvmLibraryInitIntegrati
         run("build")
 
         then:
-        assertTestPassed("some.thing.AppTest", "appHasAGreeting")
+        assertTestPassed("org.example.AppTest", "appHasAGreeting")
 
         where:
         scriptDsl << ScriptDslFixture.SCRIPT_DSLS
@@ -156,7 +157,7 @@ class JavaApplicationInitIntegrationTest extends AbstractJvmLibraryInitIntegrati
 
     def "creates sample source using junit-jupiter instead of junit with #scriptDsl build scripts"() {
         when:
-        run('init', '--type', 'java-application', '--test-framework', 'junit-jupiter', '--dsl', scriptDsl.id)
+        run('init', '--type', 'java-application', '--test-framework', 'junit-jupiter', '--dsl', scriptDsl.id, '--java-version', JavaVersion.current().majorVersion)
 
         then:
         subprojectDir.file("src/main/java").assertHasDescendants(SAMPLE_APP_CLASS)
@@ -169,7 +170,7 @@ class JavaApplicationInitIntegrationTest extends AbstractJvmLibraryInitIntegrati
         run("build")
 
         then:
-        assertTestPassed("some.thing.AppTest", "appHasAGreeting")
+        assertTestPassed("org.example.AppTest", "appHasAGreeting")
 
         where:
         scriptDsl << ScriptDslFixture.SCRIPT_DSLS
@@ -177,7 +178,7 @@ class JavaApplicationInitIntegrationTest extends AbstractJvmLibraryInitIntegrati
 
     def "creates sample source with package and #testFramework and #scriptDsl build scripts"() {
         when:
-        run('init', '--type', 'java-application', '--test-framework', testFramework.id, '--package', 'my.app', '--dsl', scriptDsl.id)
+        run('init', '--type', 'java-application', '--test-framework', testFramework.id, '--package', 'my.app', '--dsl', scriptDsl.id, '--java-version', JavaVersion.current().majorVersion)
 
         then:
         subprojectDir.file("src/main/java").assertHasDescendants("my/app/App.java")
@@ -204,7 +205,7 @@ class JavaApplicationInitIntegrationTest extends AbstractJvmLibraryInitIntegrati
 
     def "creates sample source with package and spock and #scriptDsl build scripts"() {
         when:
-        run('init', '--type', 'java-application', '--test-framework', 'spock', '--package', 'my.app', '--dsl', scriptDsl.id)
+        run('init', '--type', 'java-application', '--test-framework', 'spock', '--package', 'my.app', '--dsl', scriptDsl.id, '--java-version', JavaVersion.current().majorVersion)
 
         then:
         subprojectDir.file("src/main/java").assertHasDescendants("my/app/App.java")
@@ -247,7 +248,7 @@ class JavaApplicationInitIntegrationTest extends AbstractJvmLibraryInitIntegrati
                 }
         """
         when:
-        run('init', '--type', 'java-application', '--dsl', scriptDsl.id)
+        run('init', '--type', 'java-application', '--dsl', scriptDsl.id, '--overwrite', '--java-version', JavaVersion.current().majorVersion)
 
         then:
         subprojectDir.file("src/main/java").assertHasDescendants("org/acme/SampleMain.java")

@@ -16,6 +16,10 @@
 
 package org.gradle.cache;
 
+import org.gradle.internal.file.FileHierarchySet;
+import org.gradle.internal.service.scopes.Scope;
+import org.gradle.internal.service.scopes.ServiceScope;
+
 /**
  * Identifies if a path is underneath one of Gradle's global caches.
  *
@@ -23,10 +27,16 @@ package org.gradle.cache;
  *
  * The quasi-immutability of global caches allows for some optimizations by retaining file system state in-memory.
  */
+@ServiceScope(Scope.UserHome.class)
 public interface GlobalCacheLocations {
 
     /**
      * Checks if a given path is inside one of Gradle's global caches.
      */
     boolean isInsideGlobalCache(String path);
+
+    /**
+     * Returns the cache locations.
+     */
+    FileHierarchySet getCacheRoots();
 }

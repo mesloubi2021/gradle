@@ -1,58 +1,49 @@
 plugins {
     id("gradlebuild.portalplugin.kotlin")
     id("gradlebuild.kotlin-dsl-plugin-extensions")
-    id("gradlebuild.kotlin-dsl-plugin-bundle-integ-tests")
 }
 
 description = "Kotlin DSL Gradle Plugins deployed to the Plugin Portal"
 
 group = "org.gradle.kotlin"
-version = "4.1.3"
+version = "5.1.1"
 
 base.archivesName = "plugins"
 
 dependencies {
-    compileOnly(project(":base-services"))
-    compileOnly(project(":logging"))
-    compileOnly(project(":core-api"))
-    compileOnly(project(":model-core"))
-    compileOnly(project(":core"))
-    compileOnly(project(":language-jvm"))
-    compileOnly(project(":language-java"))
-    compileOnly(project(":platform-jvm"))
-    compileOnly(project(":plugin-development"))
-    compileOnly(project(":kotlin-dsl"))
+    compileOnly(projects.baseServices)
+    compileOnly(projects.logging)
+    compileOnly(projects.coreApi)
+    compileOnly(projects.modelCore)
+    compileOnly(projects.core)
+    compileOnly(projects.languageJvm)
+    compileOnly(projects.languageJava)
+    compileOnly(projects.loggingApi)
+    compileOnly(projects.platformJvm)
+    compileOnly(projects.pluginDevelopment)
+    compileOnly(projects.kotlinDsl)
+    compileOnly(projects.serviceLookup)
+    compileOnly(projects.stdlibJavaExtensions)
 
     compileOnly(libs.slf4jApi)
     compileOnly(libs.inject)
 
-    implementation(libs.futureKotlin("stdlib"))
+    api(libs.kotlinStdlib)
+
+
     implementation(libs.futureKotlin("gradle-plugin"))
+    implementation(libs.futureKotlin("gradle-plugin-api"))
     implementation(libs.futureKotlin("sam-with-receiver"))
     implementation(libs.futureKotlin("assignment"))
 
+
     testImplementation(projects.logging)
-
-    integTestImplementation(project(":base-services"))
-    integTestImplementation(project(":logging"))
-    integTestImplementation(project(":core-api"))
-    integTestImplementation(project(":model-core"))
-    integTestImplementation(project(":core"))
-    integTestImplementation(project(":plugins-java"))
-
-    integTestImplementation(project(":platform-jvm"))
-    integTestImplementation(project(":kotlin-dsl"))
-    integTestImplementation(project(":internal-testing"))
-    integTestImplementation(testFixtures(project(":kotlin-dsl")))
-
-    integTestImplementation(libs.futureKotlin("compiler-embeddable"))
-
-    integTestImplementation(libs.slf4jApi)
-    integTestImplementation(libs.mockitoKotlin)
-
-    integTestDistributionRuntimeOnly(project(":distributions-basics")) {
-        because("KotlinDslPluginTest tests against TestKit")
+    testImplementation(testFixtures(projects.kotlinDsl))
+    testImplementation(libs.slf4jApi)
+    testImplementation(libs.kotlinReflect) {
+        because("mockito-kotlin 1.6 requires kotlin-reflect in 1.0.7, we want to overrule that")
     }
+    testImplementation(libs.mockitoKotlin)
 }
 
 packageCycles {
@@ -97,4 +88,7 @@ pluginPublish {
         pluginId = "org.gradle.kotlin.kotlin-dsl.precompiled-script-plugins",
         pluginClass = "org.gradle.kotlin.dsl.plugins.precompiled.PrecompiledScriptPlugins"
     )
+}
+tasks.isolatedProjectsIntegTest {
+    enabled = false
 }

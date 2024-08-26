@@ -22,13 +22,13 @@ import org.gradle.buildinit.plugins.internal.modifiers.BuildInitTestFramework;
 import org.gradle.buildinit.plugins.internal.modifiers.Language;
 import org.gradle.buildinit.plugins.internal.modifiers.ModularizationOption;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
 import static java.util.stream.Collectors.toList;
 import static org.gradle.util.internal.GroovyDependencyUtil.groovyGroupName;
-import static org.gradle.util.internal.GroovyDependencyUtil.groovyModuleDependency;
 
 public abstract class JvmProjectInitDescriptor extends LanguageLibraryProjectInitDescriptor {
 
@@ -47,16 +47,16 @@ public abstract class JvmProjectInitDescriptor extends LanguageLibraryProjectIni
         return settings.getModularizationOption() == ModularizationOption.SINGLE_PROJECT;
     }
 
-    protected String applicationConventionPlugin(InitSettings settings) {
-        return settings.getPackageName() + "." + getLanguage().getName() + "-application-conventions";
+    protected String applicationConventionPlugin() {
+        return InitSettings.CONVENTION_PLUGIN_NAME_PREFIX + "." + getLanguage().getName() + "-application-conventions";
     }
 
-    protected String libraryConventionPlugin(InitSettings settings) {
-        return settings.getPackageName() + "." + getLanguage().getName() + "-library-conventions";
+    protected String libraryConventionPlugin() {
+        return InitSettings.CONVENTION_PLUGIN_NAME_PREFIX + "." + getLanguage().getName() + "-library-conventions";
     }
 
-    private String commonConventionPlugin(InitSettings settings) {
-        return settings.getPackageName() + "." + getLanguage().getName() + "-common-conventions";
+    private String commonConventionPlugin() {
+        return InitSettings.CONVENTION_PLUGIN_NAME_PREFIX + "." + getLanguage().getName() + "-common-conventions";
     }
 
     @Override
@@ -80,12 +80,20 @@ public abstract class JvmProjectInitDescriptor extends LanguageLibraryProjectIni
     }
 
     @Override
-    public BuildInitTestFramework getDefaultTestFramework() {
+    public BuildInitTestFramework getDefaultTestFramework(ModularizationOption modularizationOption) {
+        if (modularizationOption == ModularizationOption.WITH_LIBRARY_PROJECTS) {
+            // This is the only supported option
+            return BuildInitTestFramework.JUNIT_JUPITER;
+        }
         return description.getDefaultTestFramework();
     }
 
     @Override
-    public Set<BuildInitTestFramework> getTestFrameworks() {
+    public Set<BuildInitTestFramework> getTestFrameworks(ModularizationOption modularizationOption) {
+        if (modularizationOption == ModularizationOption.WITH_LIBRARY_PROJECTS) {
+            // This is the only supported option
+            return Collections.singleton(BuildInitTestFramework.JUNIT_JUPITER);
+        }
         return description.getSupportedTestFrameworks();
     }
 
@@ -106,7 +114,7 @@ public abstract class JvmProjectInitDescriptor extends LanguageLibraryProjectIni
         description.getPluginName().ifPresent(languagePlugin -> {
             String pluginVersionProperty = description.getPluginVersionProperty();
             String pluginVersion = pluginVersionProperty == null ? null : libraryVersionProvider.getVersion(pluginVersionProperty);
-            buildScriptBuilder.plugin("Apply the " + languagePlugin + " Plugin to add support for " + getLanguage() + ".", languagePlugin, pluginVersion);
+            buildScriptBuilder.plugin("Apply the " + languagePlugin + " Plugin to add support for " + getLanguage() + ".", languagePlugin, pluginVersion, description.getExplicitPluginAlias());
         });
 
         settings.getJavaLanguageVersion().ifPresent(languageVersion -> {
@@ -149,7 +157,7 @@ public abstract class JvmProjectInitDescriptor extends LanguageLibraryProjectIni
                 buildScriptBuilder.javaToolchainFor(languageVersion);
             });
         } else {
-            buildScriptBuilder.plugin("Apply the common convention plugin for shared build configuration between library and application projects.", commonConventionPlugin(settings));
+            buildScriptBuilder.plugin("Apply the common convention plugin for shared build configuration between library and application projects.", commonConventionPlugin());
             if ("library".equals(conventionPluginName)) {
                 applyLibraryPlugin(buildScriptBuilder);
             } else if ("application".equals(conventionPluginName)) {
@@ -211,14 +219,14 @@ public abstract class JvmProjectInitDescriptor extends LanguageLibraryProjectIni
         switch (getLanguage()) {
             case GROOVY:
                 String groovyVersion = libraryVersionProvider.getVersion("groovy");
-                String groovyAllCoordinates = groovyGroupName(groovyVersion) + ":" + (constraintsDefined ? "groovy-all" : "groovy-all:" + groovyVersion);
-                buildScriptBuilder.implementationDependency("Use the latest Groovy version for building this library", groovyAllCoordinates);
+                buildScriptBuilder.implementationDependency("Use the latest Groovy version for building this library",
+                    BuildInitDependency.of(groovyGroupName(groovyVersion) + ":groovy-all", constraintsDefined ? null : groovyVersion));
                 break;
             case SCALA:
                 String scalaVersion = libraryVersionProvider.getVersion("scala");
                 String scalaLibraryVersion = libraryVersionProvider.getVersion("scala-library");
-                String scalaCoordinates = constraintsDefined ? "org.scala-lang:scala-library" : "org.scala-lang:scala-library:" + scalaLibraryVersion;
-                buildScriptBuilder.implementationDependency("Use Scala " + scalaVersion + " in our library project", scalaCoordinates);
+                buildScriptBuilder.implementationDependency("Use Scala " + scalaVersion + " in our library project",
+                    BuildInitDependency.of("org.scala-lang:scala-library", constraintsDefined ? null : scalaLibraryVersion));
                 break;
             default:
                 break;
@@ -227,14 +235,16 @@ public abstract class JvmProjectInitDescriptor extends LanguageLibraryProjectIni
 
     private void addDependencyConstraints(BuildScriptBuilder buildScriptBuilder) {
         String commonsTextVersion = libraryVersionProvider.getVersion("commons-text");
-        buildScriptBuilder.implementationDependencyConstraint("Define dependency versions as constraints", "org.apache.commons:commons-text:" + commonsTextVersion);
+        buildScriptBuilder.implementationDependencyConstraint("Define dependency versions as constraints",
+            BuildInitDependency.of("org.apache.commons:commons-text", commonsTextVersion));
 
         if (getLanguage() == Language.GROOVY) {
-            buildScriptBuilder.implementationDependencyConstraint(null, groovyModuleDependency("groovy-all", libraryVersionProvider.getVersion("groovy")));
+            String groovyVersion = libraryVersionProvider.getVersion("groovy");
+            buildScriptBuilder.implementationDependencyConstraint(null, BuildInitDependency.of(groovyGroupName(groovyVersion) + ":groovy-all", groovyVersion));
         }
         if (getLanguage() == Language.SCALA) {
             String scalaLibraryVersion = libraryVersionProvider.getVersion("scala-library");
-            buildScriptBuilder.implementationDependencyConstraint(null, "org.scala-lang:scala-library:" + scalaLibraryVersion);
+            buildScriptBuilder.implementationDependencyConstraint(null, BuildInitDependency.of("org.scala-lang:scala-library", scalaLibraryVersion));
         }
     }
 
@@ -242,15 +252,16 @@ public abstract class JvmProjectInitDescriptor extends LanguageLibraryProjectIni
         switch (testFramework) {
             case SPOCK:
                 if (getLanguage() != Language.GROOVY) {
+                    String groovyVersion = libraryVersionProvider.getVersion("groovy");
                     buildScriptBuilder
                         .plugin("Apply the groovy plugin to also add support for Groovy (needed for Spock)", "groovy")
                         .testImplementationDependency("Use the latest Groovy version for Spock testing",
-                            groovyModuleDependency("groovy", libraryVersionProvider.getVersion("groovy")));
+                            BuildInitDependency.of(groovyGroupName(groovyVersion) + ":groovy", groovyVersion));
                 }
                 buildScriptBuilder.testImplementationDependency("Use the awesome Spock testing and specification framework even with Java",
-                    "org.spockframework:spock-core:" + libraryVersionProvider.getVersion("spock"),
-                    "junit:junit:" + libraryVersionProvider.getVersion("junit"));
-                buildScriptBuilder.testRuntimeOnlyDependency(null, "org.junit.platform:junit-platform-launcher");
+                    BuildInitDependency.of("org.spockframework:spock-core", libraryVersionProvider.getVersion("spock")),
+                    BuildInitDependency.of("junit:junit", libraryVersionProvider.getVersion("junit")));
+                buildScriptBuilder.testRuntimeOnlyDependency(null, BuildInitDependency.of("org.junit.platform:junit-platform-launcher"));
                 buildScriptBuilder.taskMethodInvocation(
                     "Use JUnit Platform for unit tests.",
                     "test", "Test", "useJUnitPlatform");
@@ -259,7 +270,7 @@ public abstract class JvmProjectInitDescriptor extends LanguageLibraryProjectIni
                 buildScriptBuilder
                     .testImplementationDependency(
                         "Use TestNG framework, also requires calling test.useTestNG() below",
-                        "org.testng:testng:" + libraryVersionProvider.getVersion("testng"))
+                        BuildInitDependency.of("org.testng:testng", libraryVersionProvider.getVersion("testng")))
                     .taskMethodInvocation(
                         "Use TestNG for unit tests.",
                         "test", "Test", "useTestNG");
@@ -267,8 +278,8 @@ public abstract class JvmProjectInitDescriptor extends LanguageLibraryProjectIni
             case JUNIT_JUPITER:
                 buildScriptBuilder.testImplementationDependency(
                     "Use JUnit Jupiter for testing.",
-                    "org.junit.jupiter:junit-jupiter:" + libraryVersionProvider.getVersion("junit-jupiter"));
-                buildScriptBuilder.testRuntimeOnlyDependency(null, "org.junit.platform:junit-platform-launcher");
+                    BuildInitDependency.of("org.junit.jupiter:junit-jupiter", libraryVersionProvider.getVersion("junit-jupiter")));
+                buildScriptBuilder.testRuntimeOnlyDependency(null, BuildInitDependency.of("org.junit.platform:junit-platform-launcher"));
 
                 buildScriptBuilder.taskMethodInvocation(
                     "Use JUnit Platform for unit tests.",
@@ -281,24 +292,26 @@ public abstract class JvmProjectInitDescriptor extends LanguageLibraryProjectIni
                 String junitVersion = libraryVersionProvider.getVersion("junit");
                 String scalaXmlVersion = libraryVersionProvider.getVersion("scala-xml");
                 buildScriptBuilder.testImplementationDependency("Use Scalatest for testing our library",
-                        "junit:junit:" + junitVersion,
-                        "org.scalatest:scalatest_" + scalaVersion + ":" + scalaTestVersion,
-                        "org.scalatestplus:junit-4-13_" + scalaVersion + ":" + scalaTestPlusJunitVersion)
-                    .testRuntimeOnlyDependency("Need scala-xml at test runtime",
-                        "org.scala-lang.modules:scala-xml_" + scalaVersion + ":" + scalaXmlVersion);
+                    BuildInitDependency.of("junit:junit", junitVersion),
+                    BuildInitDependency.of("org.scalatest:scalatest_" + scalaVersion, scalaTestVersion),
+                    BuildInitDependency.of("org.scalatestplus:junit-4-13_" + scalaVersion, scalaTestPlusJunitVersion));
+                buildScriptBuilder.testRuntimeOnlyDependency("Need scala-xml at test runtime",
+                    BuildInitDependency.of("org.scala-lang.modules:scala-xml_" + scalaVersion, scalaXmlVersion));
                 break;
             case KOTLINTEST:
-                buildScriptBuilder.testImplementationDependency("Use the Kotlin JUnit 5 integration.", "org.jetbrains.kotlin:kotlin-test-junit5");
+                buildScriptBuilder.testImplementationDependency("Use the Kotlin JUnit 5 integration.", BuildInitDependency.of("org.jetbrains.kotlin:kotlin-test-junit5"));
                 // TODO: Make this work with JUnit 5.6.0 again, see https://github.com/gradle/gradle/issues/13955
-                buildScriptBuilder.testImplementationDependency("Use the JUnit 5 integration.", "org.junit.jupiter:junit-jupiter-engine:" + libraryVersionProvider.getVersion("junit-jupiter"));
-                buildScriptBuilder.testRuntimeOnlyDependency(null, "org.junit.platform:junit-platform-launcher");
+                buildScriptBuilder.testImplementationDependency("Use the JUnit 5 integration.",
+                    BuildInitDependency.of("org.junit.jupiter:junit-jupiter-engine", libraryVersionProvider.getVersion("junit-jupiter")));
+                buildScriptBuilder.testRuntimeOnlyDependency(null, BuildInitDependency.of("org.junit.platform:junit-platform-launcher"));
 
                 buildScriptBuilder.taskMethodInvocation(
                     "Use JUnit Platform for unit tests.",
                     "test", "Test", "useJUnitPlatform");
                 break;
             default:
-                buildScriptBuilder.testImplementationDependency("Use JUnit test framework.", "junit:junit:" + libraryVersionProvider.getVersion("junit"));
+                buildScriptBuilder.testImplementationDependency("Use JUnit test framework.",
+                    BuildInitDependency.of("junit:junit", libraryVersionProvider.getVersion("junit")));
                 break;
         }
     }

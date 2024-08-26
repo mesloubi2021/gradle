@@ -16,6 +16,7 @@
 
 package org.gradle.kotlin.dsl.support
 
+import com.google.common.annotations.VisibleForTesting
 import org.gradle.api.JavaVersion
 import org.gradle.api.SupportsKotlinAssignmentOverloading
 import org.gradle.internal.SystemProperties
@@ -57,7 +58,7 @@ import org.jetbrains.kotlin.config.JvmClosureGenerationScheme
 import org.jetbrains.kotlin.config.JvmDefaultMode
 import org.jetbrains.kotlin.config.JvmTarget
 import org.jetbrains.kotlin.config.JvmTarget.JVM_1_8
-import org.jetbrains.kotlin.config.JvmTarget.JVM_20
+import org.jetbrains.kotlin.config.JvmTarget.JVM_22
 import org.jetbrains.kotlin.config.LanguageFeature
 import org.jetbrains.kotlin.config.LanguageVersion
 import org.jetbrains.kotlin.config.LanguageVersionSettingsImpl
@@ -88,24 +89,24 @@ import kotlin.script.experimental.jvm.JvmDependency
 import kotlin.script.experimental.jvm.JvmGetScriptingClass
 
 
+@Suppress("LongParameterList")
 fun compileKotlinScriptModuleTo(
     outputDirectory: File,
-    jvmTarget: JavaVersion,
+    compilerOptions: KotlinCompilerOptions,
     moduleName: String,
     scriptFiles: Collection<String>,
     scriptDef: ScriptDefinition,
     classPath: Iterable<File>,
     logger: Logger,
-    allWarningsAsErrors: Boolean,
     pathTranslation: (String) -> String
 ) = compileKotlinScriptModuleTo(
     outputDirectory,
-    jvmTarget,
+    compilerOptions,
     moduleName,
     scriptFiles,
     scriptDef,
     classPath,
-    LoggingMessageCollector(logger, onCompilerWarningsFor(allWarningsAsErrors), pathTranslation)
+    LoggingMessageCollector(logger, onCompilerWarningsFor(compilerOptions.allWarningsAsErrors), pathTranslation)
 )
 
 
@@ -137,21 +138,22 @@ fun scriptDefinitionFromTemplate(
 internal
 fun compileKotlinScriptToDirectory(
     outputDirectory: File,
-    jvmTarget: JavaVersion,
+    compilerOptions: KotlinCompilerOptions,
     scriptFile: File,
     scriptDef: ScriptDefinition,
     classPath: List<File>,
-    messageCollector: LoggingMessageCollector
+    logger: Logger,
+    pathTranslation: (String) -> String
 ): String {
 
     compileKotlinScriptModuleTo(
         outputDirectory,
-        jvmTarget,
+        compilerOptions,
         "buildscript",
         listOf(scriptFile.path),
         scriptDef,
         classPath,
-        messageCollector
+        messageCollectorFor(logger, compilerOptions.allWarningsAsErrors, pathTranslation)
     )
 
     return NameUtils.getScriptNameForFile(scriptFile.name).asString()
@@ -161,7 +163,7 @@ fun compileKotlinScriptToDirectory(
 private
 fun compileKotlinScriptModuleTo(
     outputDirectory: File,
-    jvmTarget: JavaVersion,
+    compilerOptions: KotlinCompilerOptions,
     moduleName: String,
     scriptFiles: Collection<String>,
     scriptDef: ScriptDefinition,
@@ -170,7 +172,7 @@ fun compileKotlinScriptModuleTo(
 ) {
     withRootDisposable {
         withCompilationExceptionHandler(messageCollector) {
-            val configuration = compilerConfigurationFor(messageCollector, jvmTarget).apply {
+            val configuration = compilerConfigurationFor(messageCollector, compilerOptions).apply {
                 put(RETAIN_OUTPUT_IN_MEMORY, false)
                 put(OUTPUT_DIRECTORY, outputDirectory)
                 setModuleName(moduleName)
@@ -217,20 +219,20 @@ object HasImplicitReceiverCompilerPlugin {
 }
 
 
+@VisibleForTesting
 internal
 fun compileToDirectory(
     outputDirectory: File,
-    jvmTarget: JavaVersion,
+    compilerOptions: KotlinCompilerOptions,
     moduleName: String,
     sourceFiles: Iterable<File>,
     logger: Logger,
     classPath: Iterable<File>,
-    onCompilerWarning: EmbeddedKotlinCompilerWarning = EmbeddedKotlinCompilerWarning.WARN,
 ): Boolean {
 
     withRootDisposable {
-        withMessageCollectorFor(logger, onCompilerWarning) { messageCollector ->
-            val configuration = compilerConfigurationFor(messageCollector, jvmTarget).apply {
+        withMessageCollectorFor(logger, EmbeddedKotlinCompilerWarning.WARN) { messageCollector ->
+            val configuration = compilerConfigurationFor(messageCollector, compilerOptions).apply {
                 addKotlinSourceRoots(sourceFiles.map { it.canonicalPath })
                 put(OUTPUT_DIRECTORY, outputDirectory)
                 setModuleName(moduleName)
@@ -355,37 +357,38 @@ class LoggingOutputStream(val log: (String) -> Unit) : OutputStream() {
 
 
 private
-fun compilerConfigurationFor(messageCollector: MessageCollector, jvmTarget: JavaVersion): CompilerConfiguration =
+fun compilerConfigurationFor(messageCollector: MessageCollector, compilerOptions: KotlinCompilerOptions): CompilerConfiguration =
     CompilerConfiguration().apply {
         put(CLIConfigurationKeys.MESSAGE_COLLECTOR_KEY, messageCollector)
-        put(JVM_TARGET, jvmTarget.toKotlinJvmTarget())
+        put(JVM_TARGET, compilerOptions.jvmTarget.toKotlinJvmTarget())
         put(JDK_HOME, File(System.getProperty("java.home")))
         put(IR, true)
         put(SAM_CONVERSIONS, JvmClosureGenerationScheme.CLASS)
         addJvmSdkRoots(PathUtil.getJdkClassesRootsFromCurrentJre())
-        put(CommonConfigurationKeys.LANGUAGE_VERSION_SETTINGS, gradleKotlinDslLanguageVersionSettings)
+        put(CommonConfigurationKeys.LANGUAGE_VERSION_SETTINGS, gradleKotlinDslLanguageVersionSettingsFor(compilerOptions))
         put(CommonConfigurationKeys.ALLOW_ANY_SCRIPTS_IN_SOURCE_ROOTS, true)
     }
 
 
+@VisibleForTesting
 internal
 fun JavaVersion.toKotlinJvmTarget(): JvmTarget {
-    // JvmTarget.fromString(JavaVersion.majorVersion) works from Java 9 to Java 20
+    // JvmTarget.fromString(JavaVersion.majorVersion) works from Java 9 to Java 21
     return JvmTarget.fromString(majorVersion)
         ?: if (this <= JavaVersion.VERSION_1_8) JVM_1_8
-        else JVM_20
+        else JVM_22
 }
 
 
 private
-val gradleKotlinDslLanguageVersionSettings = LanguageVersionSettingsImpl(
+fun gradleKotlinDslLanguageVersionSettingsFor(compilerOptions: KotlinCompilerOptions) = LanguageVersionSettingsImpl(
     languageVersion = LanguageVersion.KOTLIN_1_8,
     apiVersion = ApiVersion.KOTLIN_1_8,
     analysisFlags = mapOf(
-        AnalysisFlags.skipMetadataVersionCheck to true,
+        AnalysisFlags.skipMetadataVersionCheck to compilerOptions.skipMetadataVersionCheck,
         AnalysisFlags.skipPrereleaseCheck to true,
         AnalysisFlags.allowUnstableDependencies to true,
-        JvmAnalysisFlags.jvmDefaultMode to JvmDefaultMode.ENABLE,
+        JvmAnalysisFlags.jvmDefaultMode to JvmDefaultMode.ALL,
     ),
     specificFeatures = mapOf(
         LanguageFeature.DisableCompatibilityModeForNewInference to LanguageFeature.State.ENABLED,
@@ -438,7 +441,7 @@ fun disposeKotlinCompilerContext() =
     KotlinCoreEnvironment.disposeApplicationEnvironment()
 
 
-internal
+private
 fun messageCollectorFor(
     log: Logger,
     allWarningsAsErrors: Boolean,
@@ -447,7 +450,7 @@ fun messageCollectorFor(
     messageCollectorFor(log, onCompilerWarningsFor(allWarningsAsErrors), pathTranslation)
 
 
-internal
+private
 fun messageCollectorFor(
     log: Logger,
     onCompilerWarning: EmbeddedKotlinCompilerWarning = EmbeddedKotlinCompilerWarning.WARN,
@@ -500,7 +503,7 @@ data class ScriptCompilationException(private val scriptCompilationErrors: List<
         return "Line ${lineNumber(location)}: ${location.lineContent}\n" +
             "^ $message".lines().joinToString(
                 prefix = columnIndent,
-                separator = "\n$columnIndent  $indent"
+                separator = "\n$columnIndent  $INDENT"
             )
     }
 
@@ -509,7 +512,7 @@ data class ScriptCompilationException(private val scriptCompilationErrors: List<
         location.line.toString().padStart(maxLineNumberStringLength, '0')
 
     private
-    fun prependIndent(it: String) = it.prependIndent(indent)
+    fun prependIndent(it: String) = it.prependIndent(INDENT)
 
     private
     val errorPlural
@@ -523,10 +526,10 @@ data class ScriptCompilationException(private val scriptCompilationErrors: List<
 
 
 private
-const val indent = "  "
+const val INDENT = "  "
 
 
-internal
+private
 enum class EmbeddedKotlinCompilerWarning {
     FAIL, WARN, DEBUG
 }
@@ -538,9 +541,9 @@ fun onCompilerWarningsFor(allWarningsAsErrors: Boolean) =
     else EmbeddedKotlinCompilerWarning.WARN
 
 
-internal
+private
 class LoggingMessageCollector(
-    internal val log: Logger,
+    val log: Logger,
     private val onCompilerWarning: EmbeddedKotlinCompilerWarning,
     private val pathTranslation: (String) -> String,
 ) : MessageCollector {

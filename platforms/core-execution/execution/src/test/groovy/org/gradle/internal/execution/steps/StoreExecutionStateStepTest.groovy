@@ -20,6 +20,8 @@ import com.google.common.collect.ImmutableList
 import com.google.common.collect.ImmutableSortedMap
 import org.gradle.caching.internal.origin.OriginMetadata
 import org.gradle.internal.Try
+import org.gradle.internal.execution.caching.CachingState
+import org.gradle.internal.execution.caching.impl.DefaultBuildCacheKey
 import org.gradle.internal.execution.history.AfterExecutionState
 import org.gradle.internal.execution.history.BeforeExecutionState
 import org.gradle.internal.execution.history.ExecutionHistoryStore
@@ -30,8 +32,9 @@ import org.gradle.internal.snapshot.impl.ImplementationSnapshot
 
 import static org.gradle.internal.execution.ExecutionEngine.Execution
 
-class StoreExecutionStateStepTest extends StepSpec<BeforeExecutionContext> implements SnapshotterFixture {
+class StoreExecutionStateStepTest extends StepSpec<IncrementalCachingContext> implements SnapshotterFixture {
     def executionHistoryStore = Mock(ExecutionHistoryStore)
+    def cacheKey = TestHashCodes.hashCodeFrom(1234)
 
     def originMetadata = Mock(OriginMetadata)
     def beforeExecutionState = Stub(BeforeExecutionState) {
@@ -44,12 +47,13 @@ class StoreExecutionStateStepTest extends StepSpec<BeforeExecutionContext> imple
     def outputFile = file("output.txt").text = "output"
     def outputFilesProducedByWork = snapshotsOf(output: outputFile)
 
-    def step = new StoreExecutionStateStep<PreviousExecutionContext, AfterExecutionResult>(delegate)
+    def step = new StoreExecutionStateStep<IncrementalCachingContext, AfterExecutionResult>(delegate)
     def delegateResult = Mock(AfterExecutionResult)
 
 
     def setup() {
         _ * context.history >> Optional.of(executionHistoryStore)
+        _ * context.cacheKey >> Optional.of(TestHashCodes.hashCodeFrom(1234))
     }
 
     def "output snapshots are stored after successful execution"() {
@@ -61,11 +65,12 @@ class StoreExecutionStateStepTest extends StepSpec<BeforeExecutionContext> imple
         1 * delegate.execute(work, context) >> delegateResult
 
         then:
-        1 * delegateResult.afterExecutionState >> Optional.of(Mock(AfterExecutionState) {
+        1 * delegateResult.afterExecutionOutputState >> Optional.of(Mock(AfterExecutionState) {
             _ * getOutputFilesProducedByWork() >> this.outputFilesProducedByWork
             _ * getOriginMetadata() >> originMetadata
         })
-        _ * context.beforeExecutionState >> Optional.of(beforeExecutionState)
+
+        _ * context.cachingState >> CachingState.enabled(new DefaultBuildCacheKey(cacheKey), beforeExecutionState)
         _ * delegateResult.execution >> Try.successful(Mock(Execution))
 
         then:
@@ -82,11 +87,11 @@ class StoreExecutionStateStepTest extends StepSpec<BeforeExecutionContext> imple
         1 * delegate.execute(work, context) >> delegateResult
 
         then:
-        1 * delegateResult.afterExecutionState >> Optional.of(Mock(AfterExecutionState) {
+        1 * delegateResult.afterExecutionOutputState >> Optional.of(Mock(AfterExecutionState) {
             1 * getOutputFilesProducedByWork() >> this.outputFilesProducedByWork
             1 * getOriginMetadata() >> originMetadata
         })
-        _ * context.beforeExecutionState >> Optional.of(beforeExecutionState)
+        _ * context.cachingState >> CachingState.enabled(new DefaultBuildCacheKey(cacheKey), beforeExecutionState)
         _ * delegateResult.execution >> Try.failure(new RuntimeException("execution error"))
         _ * context.previousExecutionState >> Optional.empty()
 
@@ -106,11 +111,11 @@ class StoreExecutionStateStepTest extends StepSpec<BeforeExecutionContext> imple
         1 * delegate.execute(work, context) >> delegateResult
 
         then:
-        1 * delegateResult.afterExecutionState >> Optional.of(Mock(AfterExecutionState) {
+        1 * delegateResult.afterExecutionOutputState >> Optional.of(Mock(AfterExecutionState) {
             _ * getOutputFilesProducedByWork() >> this.outputFilesProducedByWork
             _ * getOriginMetadata() >> originMetadata
         })
-        _ * context.beforeExecutionState >> Optional.of(beforeExecutionState)
+        _ * context.cachingState >> CachingState.enabled(new DefaultBuildCacheKey(cacheKey), beforeExecutionState)
         _ * delegateResult.execution >> Try.failure(new RuntimeException("execution error"))
         _ * context.previousExecutionState >> Optional.of(previousExecutionState)
         1 * previousExecutionState.outputFilesProducedByWork >> snapshotsOf([:])
@@ -131,10 +136,10 @@ class StoreExecutionStateStepTest extends StepSpec<BeforeExecutionContext> imple
         1 * delegate.execute(work, context) >> delegateResult
 
         then:
-        1 * delegateResult.afterExecutionState >> Optional.of(Mock(AfterExecutionState) {
+        1 * delegateResult.afterExecutionOutputState >> Optional.of(Mock(AfterExecutionState) {
             _ * getOutputFilesProducedByWork() >> this.outputFilesProducedByWork
         })
-        _ * context.beforeExecutionState >> Optional.of(beforeExecutionState)
+        _ * context.cachingState >> CachingState.enabled(new DefaultBuildCacheKey(cacheKey), beforeExecutionState)
         _ * delegateResult.execution >> Try.failure(new RuntimeException("execution error"))
         _ * context.previousExecutionState >> Optional.of(previousExecutionState)
         1 * previousExecutionState.outputFilesProducedByWork >> outputFilesProducedByWork
@@ -150,17 +155,16 @@ class StoreExecutionStateStepTest extends StepSpec<BeforeExecutionContext> imple
         1 * delegate.execute(work, context) >> delegateResult
 
         then:
-        1 * delegateResult.afterExecutionState >> Optional.empty()
         0 * _
     }
 
     void expectStore(boolean successful, ImmutableSortedMap<String, FileSystemSnapshot> finalOutputs) {
         1 * executionHistoryStore.store(
             identity.uniqueId,
-            successful,
             { AfterExecutionState executionState ->
                 executionState.outputFilesProducedByWork == finalOutputs
                 executionState.originMetadata == originMetadata
+                executionState.successful >> successful
             }
         )
     }

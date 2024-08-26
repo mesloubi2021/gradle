@@ -22,7 +22,7 @@ import org.gradle.test.fixtures.file.LeaksFileHandles
 import org.gradle.tooling.model.kotlin.dsl.KotlinDslScriptModel
 import org.gradle.tooling.model.kotlin.dsl.KotlinDslScriptsModel
 
-import static org.gradle.kotlin.dsl.tooling.builders.KotlinScriptModelParameters.setModelParameters
+import static org.gradle.kotlin.dsl.tooling.fixtures.KotlinScriptModelParameters.setModelParameters
 
 @TargetGradleVersion(">=6.8")
 @LeaksFileHandles("Kotlin Compiler Daemon taking time to shut down")
@@ -35,7 +35,7 @@ class KotlinDslScriptsModelCrossVersionSpec extends AbstractKotlinDslScriptsMode
 
 
         when:
-        def model = loadValidatedToolingModel(KotlinDslScriptsModel) {
+        def model = loadToolingModel(KotlinDslScriptsModel) {
             setModelParameters(it, false, true, [])
         }
         Map<File, KotlinDslScriptModel> singleRequestModels = model.scriptModels

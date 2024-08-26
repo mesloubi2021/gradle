@@ -20,6 +20,7 @@ import com.google.common.collect.ImmutableSet;
 import org.gradle.api.internal.DocumentationRegistry;
 import org.gradle.buildinit.plugins.internal.modifiers.BuildInitTestFramework;
 import org.gradle.buildinit.plugins.internal.modifiers.Language;
+import org.gradle.buildinit.plugins.internal.modifiers.ModularizationOption;
 
 import java.util.Set;
 
@@ -37,12 +38,12 @@ public class GroovyGradlePluginProjectInitDescriptor extends JvmGradlePluginProj
     }
 
     @Override
-    public BuildInitTestFramework getDefaultTestFramework() {
+    public BuildInitTestFramework getDefaultTestFramework(ModularizationOption modularizationOption) {
         return BuildInitTestFramework.SPOCK;
     }
 
     @Override
-    public Set<BuildInitTestFramework> getTestFrameworks() {
+    public Set<BuildInitTestFramework> getTestFrameworks(ModularizationOption modularizationOption) {
         return ImmutableSet.of(BuildInitTestFramework.SPOCK);
     }
 
@@ -57,9 +58,9 @@ public class GroovyGradlePluginProjectInitDescriptor extends JvmGradlePluginProj
         buildScriptBuilder.plugin("Apply the Groovy plugin to add support for Groovy", "groovy");
         if (!settings.isUseTestSuites()) {
             buildScriptBuilder.testImplementationDependency("Use the awesome Spock testing and specification framework",
-                "org.spockframework:spock-core:" + libraryVersionProvider.getVersion("spock"));
+                BuildInitDependency.of("org.spockframework:spock-core", libraryVersionProvider.getVersion("spock")));
             buildScriptBuilder.testRuntimeOnlyDependency(null,
-                "org.junit.platform:junit-platform-launcher");
+                BuildInitDependency.of("org.junit.platform:junit-platform-launcher"));
         }
     }
 

@@ -16,6 +16,7 @@
 
 package org.gradle.api.internal.initialization;
 
+import org.gradle.api.InvalidUserDataException;
 import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
@@ -46,16 +47,21 @@ public class DefaultBuildLogicBuilder implements BuildLogicBuilder {
     }
 
     @Override
-    public void prepareClassPath(Configuration classpathConfiguration, DependencyHandler dependencyHandler) {
-        scriptClassPathResolver.prepareClassPath(classpathConfiguration, dependencyHandler);
+    public ScriptClassPathResolutionContext prepareDependencyHandler(DependencyHandler dependencyHandler) {
+        return scriptClassPathResolver.prepareDependencyHandler(dependencyHandler);
     }
 
     @Override
-    public ClassPath resolveClassPath(Configuration classpathConfiguration) {
+    public void prepareClassPath(Configuration classpathConfiguration, ScriptClassPathResolutionContext resolutionContext) {
+        scriptClassPathResolver.prepareClassPath(classpathConfiguration, resolutionContext);
+    }
+
+    @Override
+    public ClassPath resolveClassPath(Configuration classpathConfiguration, ScriptClassPathResolutionContext resolutionContext) {
         return buildQueue.build(
             currentBuild,
             taskIdentifiersForBuildDependenciesOf(classpathConfiguration),
-            () -> scriptClassPathResolver.resolveClassPath(classpathConfiguration)
+            () -> scriptClassPathResolver.resolveClassPath(classpathConfiguration, resolutionContext)
         );
     }
 
@@ -63,7 +69,9 @@ public class DefaultBuildLogicBuilder implements BuildLogicBuilder {
         List<TaskIdentifier.TaskBasedTaskIdentifier> tasksToBuild = new ArrayList<>();
         for (Task task : getDependenciesForInternalUse(classpath)) {
             BuildState targetBuild = owningBuildOf(task);
-            assert targetBuild != currentBuild;
+            if (targetBuild == currentBuild) {
+                throw new InvalidUserDataException("Script classpath dependencies must reside in a separate build from the script itself.");
+            }
             tasksToBuild.add(TaskIdentifier.of(targetBuild.getBuildIdentifier(), (TaskInternal) task));
         }
         return tasksToBuild;

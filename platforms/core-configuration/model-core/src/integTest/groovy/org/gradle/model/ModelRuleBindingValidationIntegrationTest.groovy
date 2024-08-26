@@ -29,6 +29,7 @@ class ModelRuleBindingValidationIntegrationTest extends AbstractIntegrationSpec 
 
     def "model rule that does not bind specified for project not used in the build does not fail the build"() {
         when:
+        createDirs("used", "unused")
         settingsFile << """
             include ":used", ":unused"
         """
@@ -49,7 +50,7 @@ class ModelRuleBindingValidationIntegrationTest extends AbstractIntegrationSpec 
 
     def "entire model is validated, not just what is 'needed'"() {
         when:
-        buildScript """
+        buildFile """
             class Rules extends RuleSource {
               @Model
               String s1(Integer iDontExist) {

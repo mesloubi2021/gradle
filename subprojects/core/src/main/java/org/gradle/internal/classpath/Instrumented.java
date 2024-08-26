@@ -23,10 +23,17 @@ import org.codehaus.groovy.runtime.callsite.CallSite;
 import org.codehaus.groovy.runtime.callsite.CallSiteArray;
 import org.codehaus.groovy.vmplugin.v8.IndyInterface;
 import org.gradle.internal.SystemProperties;
-import org.gradle.internal.classpath.intercept.CallInterceptor;
+import org.gradle.internal.classpath.intercept.AbstractCallInterceptor;
 import org.gradle.internal.classpath.intercept.ClassBoundCallInterceptor;
+import org.gradle.internal.classpath.intercept.FilterableCallInterceptor;
 import org.gradle.internal.classpath.intercept.InterceptScope;
 import org.gradle.internal.classpath.intercept.Invocation;
+import org.gradle.internal.configuration.inputs.AccessTrackingEnvMap;
+import org.gradle.internal.configuration.inputs.AccessTrackingProperties;
+import org.gradle.internal.configuration.inputs.InstrumentedInputs;
+import org.gradle.internal.configuration.inputs.InstrumentedInputsListener;
+import org.gradle.internal.instrumentation.api.types.FilterableBytecodeInterceptor.InstrumentationInterceptor;
+import org.gradle.internal.instrumentation.api.types.BytecodeInterceptorFilter;
 import org.gradle.internal.lazy.Lazy;
 
 import javax.annotation.Nullable;
@@ -46,73 +53,26 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-import static org.gradle.internal.classpath.intercept.CallInterceptorRegistry.getGroovyCallDecorator;
 import static org.gradle.internal.classpath.MethodHandleUtils.findStaticOrThrowError;
 import static org.gradle.internal.classpath.MethodHandleUtils.lazyKotlinStaticDefaultHandle;
+import static org.gradle.internal.classpath.intercept.CallInterceptorRegistry.getGroovyCallDecorator;
 
 public class Instrumented {
-    private static final Listener NO_OP = new Listener() {
-        @Override
-        public void systemPropertyQueried(String key, @Nullable Object value, String consumer) {
-        }
-
-        @Override
-        public void systemPropertyChanged(Object key, @Nullable Object value, String consumer) {
-        }
-
-        @Override
-        public void systemPropertyRemoved(Object key, String consumer) {
-        }
-
-        @Override
-        public void systemPropertiesCleared(String consumer) {
-        }
-
-        @Override
-        public void envVariableQueried(String key, @Nullable String value, String consumer) {
-        }
-
-        @Override
-        public void externalProcessStarted(String command, String consumer) {
-        }
-
-        @Override
-        public void fileOpened(File file, String consumer) {
-        }
-
-        @Override
-        public void fileObserved(File file, String consumer) {
-        }
-
-        @Override
-        public void fileSystemEntryObserved(File file, String consumer) {
-        }
-
-        @Override
-        public void directoryContentObserved(File file, String consumer) {
-        }
-    };
-
-    private static final AtomicReference<Listener> LISTENER = new AtomicReference<>(NO_OP);
-
-    public static void setListener(Listener listener) {
-        LISTENER.set(listener);
-    }
-
-    public static void discardListener() {
-        setListener(NO_OP);
+    @SuppressWarnings("deprecation")
+    private static InstrumentedInputsListener listener() {
+        return InstrumentedInputs.listener();
     }
 
     /**
      * This API follows the requirements in {@link org.gradle.internal.classpath.GroovyCallInterceptorsProvider.ClassSourceGroovyCallInterceptorsProvider}.
+     *
      * @deprecated This should not be called from the sources.
      */
     @SuppressWarnings("unused")
     @Deprecated
-    public static List<CallInterceptor> getCallInterceptors() {
+    public static List<FilterableCallInterceptor> getCallInterceptors() {
         return Arrays.asList(
             new SystemGetPropertyInterceptor(),
             new SystemSetPropertyInterceptor(),
@@ -132,9 +92,9 @@ public class Instrumented {
 
     // Called by generated code
     @SuppressWarnings("unused")
-    public static void groovyCallSites(CallSiteArray array) {
+    public static void groovyCallSites(CallSiteArray array, BytecodeInterceptorFilter interceptorFilter) {
         for (CallSite callSite : array.array) {
-            array.array[callSite.getIndex()] = getGroovyCallDecorator().maybeDecorateGroovyCallSite(callSite);
+            array.array[callSite.getIndex()] = getGroovyCallDecorator(interceptorFilter).maybeDecorateGroovyCallSite(callSite);
         }
     }
 
@@ -151,8 +111,11 @@ public class Instrumented {
      * @return the produced CallSite
      * @see IndyInterface
      */
-    public static java.lang.invoke.CallSite bootstrap(MethodHandles.Lookup caller, String callType, MethodType type, String name, int flags) {
-        return getGroovyCallDecorator().maybeDecorateIndyCallSite(
+    // Called by generated code
+    @SuppressWarnings("unused")
+    public static java.lang.invoke.CallSite bootstrap(MethodHandles.Lookup caller, String callType, MethodType type, String name, int flags, String interceptorFilterName) {
+        BytecodeInterceptorFilter interceptorFilter = BytecodeInterceptorFilter.valueOf(interceptorFilterName);
+        return getGroovyCallDecorator(interceptorFilter).maybeDecorateIndyCallSite(
             IndyInterface.bootstrap(caller, callType, type, name, flags), caller, callType, name, flags);
     }
 
@@ -497,10 +460,6 @@ public class Instrumented {
         externalProcessStarted(joinCommand(command), consumer);
     }
 
-    private static Listener listener() {
-        return LISTENER.get();
-    }
-
     private static String convertToString(Object arg) {
         if (arg instanceof CharSequence) {
             return ((CharSequence) arg).toString();
@@ -516,171 +475,104 @@ public class Instrumented {
         return command.stream().map(String::valueOf).collect(Collectors.joining(" "));
     }
 
-    public interface Listener {
-        /**
-         * Invoked when the code reads the system property with the String key.
-         *
-         * @param key the name of the property
-         * @param value the value of the property at the time of reading or {@code null} if the property is not present
-         * @param consumer the name of the class that is reading the property value
-         */
-        void systemPropertyQueried(String key, @Nullable Object value, String consumer);
-
-        /**
-         * Invoked when the code updates or adds the system property.
-         *
-         * @param key the name of the property, can be non-string
-         * @param value the new value of the property, can be {@code null} or non-string
-         * @param consumer the name of the class that is updating the property value
-         */
-        void systemPropertyChanged(Object key, @Nullable Object value, String consumer);
-
-        /**
-         * Invoked when the code removes the system property. The property may not be present.
-         *
-         * @param key the name of the property, can be non-string
-         * @param consumer the name of the class that is removing the property value
-         */
-        void systemPropertyRemoved(Object key, String consumer);
-
-        /**
-         * Invoked when all system properties are removed.
-         *
-         * @param consumer the name of the class that is removing the system properties
-         */
-        void systemPropertiesCleared(String consumer);
-
-        /**
-         * Invoked when the code reads the environment variable.
-         *
-         * @param key the name of the variable
-         * @param value the value of the variable
-         * @param consumer the name of the class that is reading the variable
-         */
-        void envVariableQueried(String key, @Nullable String value, String consumer);
-
-        /**
-         * Invoked when the code starts an external process. The command string with all argument is provided for reporting but its value may not be suitable to actually invoke the command because all
-         * arguments are joined together (separated by space) and there is no escaping of special characters.
-         *
-         * @param command the command used to start the process (with arguments)
-         * @param consumer the name of the class that is starting the process
-         */
-        void externalProcessStarted(String command, String consumer);
-
-        /**
-         * Invoked when the code opens a file.
-         *
-         * @param file the absolute file that was open
-         * @param consumer the name of the class that is opening the file
-         */
-        void fileOpened(File file, String consumer);
-
-        void fileObserved(File file, String consumer);
-
-        void fileSystemEntryObserved(File file, String consumer);
-
-        void directoryContentObserved(File file, String consumer);
-    }
-
     /**
      * The interceptor for {@link Integer#getInteger(String)}, {@link Integer#getInteger(String, int)}, and {@link Integer#getInteger(String, Integer)}.
      */
-    private static class IntegerGetIntegerInterceptor extends ClassBoundCallInterceptor {
+    private static class IntegerGetIntegerInterceptor extends ClassBoundCallInterceptor implements FilterableCallInterceptor, InstrumentationInterceptor {
         public IntegerGetIntegerInterceptor() {
             super(Integer.class, InterceptScope.methodsNamed("getInteger"));
         }
 
         @Override
-        protected Object doInterceptSafe(Invocation invocation, String consumer) throws Throwable {
+        protected Object interceptSafe(Invocation invocation, String consumer) throws Throwable {
             switch (invocation.getArgsCount()) {
                 case 1:
                     return getInteger(invocation.getArgument(0).toString(), consumer);
                 case 2:
                     return getInteger(invocation.getArgument(0).toString(), (Integer) invocation.getArgument(1), consumer);
             }
-            return invocation.callOriginal();
+            return invocation.callNext();
         }
     }
 
     /**
      * The interceptor for {@link Long#getLong(String)}, {@link Long#getLong(String, long)}, and {@link Long#getLong(String, Long)}.
      */
-    private static class LongGetLongInterceptor extends ClassBoundCallInterceptor {
+    private static class LongGetLongInterceptor extends ClassBoundCallInterceptor implements FilterableCallInterceptor, InstrumentationInterceptor {
         public LongGetLongInterceptor() {
             super(Long.class, InterceptScope.methodsNamed("getLong"));
         }
 
         @Override
-        protected Object doInterceptSafe(Invocation invocation, String consumer) throws Throwable {
+        protected Object interceptSafe(Invocation invocation, String consumer) throws Throwable {
             switch (invocation.getArgsCount()) {
                 case 1:
                     return getLong(invocation.getArgument(0).toString(), consumer);
                 case 2:
                     return getLong(invocation.getArgument(0).toString(), (Long) invocation.getArgument(1), consumer);
             }
-            return invocation.callOriginal();
+            return invocation.callNext();
         }
     }
 
     /**
      * The interceptor for {@link Boolean#getBoolean(String)}.
      */
-    private static class BooleanGetBooleanInterceptor extends ClassBoundCallInterceptor {
+    private static class BooleanGetBooleanInterceptor extends ClassBoundCallInterceptor implements FilterableCallInterceptor, InstrumentationInterceptor {
         public BooleanGetBooleanInterceptor() {
             super(Boolean.class, InterceptScope.methodsNamed("getBoolean"));
         }
 
         @Override
-        protected Object doInterceptSafe(Invocation invocation, String consumer) throws Throwable {
+        protected Object interceptSafe(Invocation invocation, String consumer) throws Throwable {
             if (invocation.getArgsCount() == 1) {
                 return getBoolean(invocation.getArgument(0).toString(), consumer);
             }
-            return invocation.callOriginal();
+            return invocation.callNext();
         }
     }
 
     /**
      * The interceptor for {@link System#getProperty(String)} and {@link System#getProperty(String, String)}.
      */
-    private static class SystemGetPropertyInterceptor extends ClassBoundCallInterceptor {
+    private static class SystemGetPropertyInterceptor extends ClassBoundCallInterceptor implements FilterableCallInterceptor, InstrumentationInterceptor {
         public SystemGetPropertyInterceptor() {
             super(System.class, InterceptScope.methodsNamed("getProperty"));
         }
 
         @Override
-        protected Object doInterceptSafe(Invocation invocation, String consumer) throws Throwable {
+        protected Object interceptSafe(Invocation invocation, String consumer) throws Throwable {
             switch (invocation.getArgsCount()) {
                 case 1:
                     return systemProperty(invocation.getArgument(0).toString(), consumer);
                 case 2:
                     return systemProperty(invocation.getArgument(0).toString(), convertToString(invocation.getArgument(1)), consumer);
             }
-            return invocation.callOriginal();
+            return invocation.callNext();
         }
     }
 
     /**
      * The interceptor for {@link System#setProperty(String, String)}.
      */
-    private static class SystemSetPropertyInterceptor extends ClassBoundCallInterceptor {
+    private static class SystemSetPropertyInterceptor extends ClassBoundCallInterceptor implements FilterableCallInterceptor, InstrumentationInterceptor {
         public SystemSetPropertyInterceptor() {
             super(System.class, InterceptScope.methodsNamed("setProperty"));
         }
 
         @Override
-        protected Object doInterceptSafe(Invocation invocation, String consumer) throws Throwable {
+        protected Object interceptSafe(Invocation invocation, String consumer) throws Throwable {
             if (invocation.getArgsCount() == 2) {
                 return setSystemProperty(convertToString(invocation.getArgument(0)), convertToString(invocation.getArgument(1)), consumer);
             }
-            return invocation.callOriginal();
+            return invocation.callNext();
         }
     }
 
     /**
      * The interceptor for {@link System#getProperties()} and {@code System.properties} reads.
      */
-    private static class SystemGetPropertiesInterceptor extends ClassBoundCallInterceptor {
+    private static class SystemGetPropertiesInterceptor extends ClassBoundCallInterceptor implements FilterableCallInterceptor, InstrumentationInterceptor {
         public SystemGetPropertiesInterceptor() {
             super(System.class,
                 InterceptScope.readsOfPropertiesNamed("properties"),
@@ -688,87 +580,91 @@ public class Instrumented {
         }
 
         @Override
-        protected Object doInterceptSafe(Invocation invocation, String consumer) throws Throwable {
+        protected Object interceptSafe(Invocation invocation, String consumer) throws Throwable {
             if (invocation.getArgsCount() == 0) {
                 return systemProperties(consumer);
             }
-            return invocation.callOriginal();
+            return invocation.callNext();
         }
     }
 
     /**
      * The interceptor for {@link System#setProperties(Properties)}.
      */
-    private static class SystemSetPropertiesInterceptor extends ClassBoundCallInterceptor {
+    private static class SystemSetPropertiesInterceptor extends ClassBoundCallInterceptor implements FilterableCallInterceptor, InstrumentationInterceptor {
         public SystemSetPropertiesInterceptor() {
             super(System.class, InterceptScope.methodsNamed("setProperties"));
         }
 
         @Override
-        protected Object doInterceptSafe(Invocation invocation, String consumer) throws Throwable {
+        protected Object interceptSafe(Invocation invocation, String consumer) throws Throwable {
             if (invocation.getArgsCount() == 1) {
                 setSystemProperties((Properties) invocation.getArgument(0), consumer);
                 return null;
             }
-            return invocation.callOriginal();
+            return invocation.callNext();
         }
     }
 
     /**
      * The interceptor for {@link System#clearProperty(String)}.
      */
-    private static class SystemClearPropertyInterceptor extends ClassBoundCallInterceptor {
+    private static class SystemClearPropertyInterceptor extends ClassBoundCallInterceptor implements FilterableCallInterceptor, InstrumentationInterceptor {
         public SystemClearPropertyInterceptor() {
             super(System.class, InterceptScope.methodsNamed("clearProperty"));
         }
 
         @Override
-        protected Object doInterceptSafe(Invocation invocation, String consumer) throws Throwable {
+        protected Object interceptSafe(Invocation invocation, String consumer) throws Throwable {
             if (invocation.getArgsCount() == 1) {
                 return clearSystemProperty(convertToString(invocation.getArgument(0)), consumer);
             }
-            return invocation.callOriginal();
+            return invocation.callNext();
         }
     }
 
     /**
      * The interceptor for {@link System#getenv()} and {@link System#getenv(String)}.
      */
-    private static class SystemGetenvInterceptor extends ClassBoundCallInterceptor {
+    private static class SystemGetenvInterceptor extends ClassBoundCallInterceptor implements FilterableCallInterceptor, InstrumentationInterceptor {
         public SystemGetenvInterceptor() {
             super(System.class, InterceptScope.methodsNamed("getenv"));
         }
 
         @Override
-        protected Object doInterceptSafe(Invocation invocation, String consumer) throws Throwable {
+        protected Object interceptSafe(Invocation invocation, String consumer) throws Throwable {
             switch (invocation.getArgsCount()) {
                 case 0:
                     return getenv(consumer);
                 case 1:
                     return getenv(convertToString(invocation.getArgument(0)), consumer);
             }
-            return invocation.callOriginal();
+            return invocation.callNext();
         }
     }
 
     /**
      * The interceptor for all overloads of {@code Runtime.exec}.
      */
-    private static class RuntimeExecInterceptor extends CallInterceptor {
+    private static class RuntimeExecInterceptor extends AbstractCallInterceptor implements FilterableCallInterceptor, InstrumentationInterceptor {
         public RuntimeExecInterceptor() {
             super(InterceptScope.methodsNamed("exec"));
         }
 
         @Override
-        public Object doIntercept(Invocation invocation, String consumer) throws Throwable {
+        public Object intercept(Invocation invocation, String consumer) throws Throwable {
             int argsCount = invocation.getArgsCount();
             if (1 <= argsCount && argsCount <= 3) {
-                Optional<Process> result = tryCallExec(invocation.getReceiver(), invocation.getArgument(0), invocation.getOptionalArgument(1), invocation.getOptionalArgument(2), consumer);
-                if (result.isPresent()) {
-                    return result.get();
+                Object runtimeArg = invocation.getReceiver();
+                Object commandArg = invocation.getArgument(0);
+                if (runtimeArg != null && commandArg != null) {
+                    Optional<Process> result = tryCallExec(runtimeArg, commandArg, invocation.getOptionalArgument(1), invocation.getOptionalArgument(2), consumer);
+                    if (result.isPresent()) {
+                        return result.get();
+                    }
                 }
             }
-            return invocation.callOriginal();
+            return invocation.callNext();
         }
 
         private Optional<Process> tryCallExec(Object runtimeArg, Object commandArg, @Nullable Object envpArg, @Nullable Object fileArg, String consumer) throws Throwable {
@@ -798,16 +694,16 @@ public class Instrumented {
     /**
      * The interceptor for Groovy's {@code String.execute}, {@code String[].execute}, and {@code List.execute}. This also handles {@code ProcessGroovyMethods.execute}.
      */
-    private static class ProcessGroovyMethodsExecuteInterceptor extends CallInterceptor {
+    private static class ProcessGroovyMethodsExecuteInterceptor extends AbstractCallInterceptor implements FilterableCallInterceptor, InstrumentationInterceptor {
         protected ProcessGroovyMethodsExecuteInterceptor() {
             super(InterceptScope.methodsNamed("execute"));
         }
 
         @Override
-        public Object doIntercept(Invocation invocation, String consumer) throws Throwable {
+        public Object intercept(Invocation invocation, String consumer) throws Throwable {
             // Static calls have Class<ProcessGroovyMethods> as a receiver, command as a first argument, optional arguments follow.
             // "Extension" calls have command as a receiver and optional arguments as arguments.
-            boolean isStaticCall = invocation.getReceiver().equals(ProcessGroovyMethods.class);
+            boolean isStaticCall = ProcessGroovyMethods.class.equals(invocation.getReceiver());
             int argsCount = invocation.getArgsCount();
             // Offset accounts for the command being in the list of arguments.
             int nonCommandArgsOffset = isStaticCall ? 1 : 0;
@@ -815,17 +711,19 @@ public class Instrumented {
 
             if (nonCommandArgsCount != 0 && nonCommandArgsCount != 2) {
                 // This is an unsupported overload, skip interception.
-                return invocation.callOriginal();
+                return invocation.callNext();
             }
 
             Object commandArg = isStaticCall ? invocation.getArgument(0) : invocation.getReceiver();
-            Object envpArg = invocation.getOptionalArgument(nonCommandArgsOffset);
-            Object fileArg = invocation.getOptionalArgument(nonCommandArgsOffset + 1);
-            Optional<Process> result = tryCallExecute(commandArg, envpArg, fileArg, consumer);
-            if (result.isPresent()) {
-                return result.get();
+            if (commandArg != null) {
+                Object envpArg = invocation.getOptionalArgument(nonCommandArgsOffset);
+                Object fileArg = invocation.getOptionalArgument(nonCommandArgsOffset + 1);
+                Optional<Process> result = tryCallExecute(commandArg, envpArg, fileArg, consumer);
+                if (result.isPresent()) {
+                    return result.get();
+                }
             }
-            return invocation.callOriginal();
+            return invocation.callNext();
         }
 
         private Optional<Process> tryCallExecute(Object commandArg, @Nullable Object envpArg, @Nullable Object fileArg, String consumer) throws Throwable {
@@ -865,36 +763,36 @@ public class Instrumented {
     /**
      * The interceptor for {@link ProcessBuilder#start()}.
      */
-    private static class ProcessBuilderStartInterceptor extends CallInterceptor {
+    private static class ProcessBuilderStartInterceptor extends AbstractCallInterceptor implements FilterableCallInterceptor, InstrumentationInterceptor {
         ProcessBuilderStartInterceptor() {
             super(InterceptScope.methodsNamed("start"));
         }
 
         @Override
-        public Object doIntercept(Invocation invocation, String consumer) throws Throwable {
+        public Object intercept(Invocation invocation, String consumer) throws Throwable {
             Object receiver = invocation.getReceiver();
             if (receiver instanceof ProcessBuilder) {
                 return start((ProcessBuilder) receiver, consumer);
             }
-            return invocation.callOriginal();
+            return invocation.callNext();
         }
     }
 
     /**
      * The interceptor for {@code ProcessBuilder.startPipeline(List)}.
      */
-    private static class ProcessBuilderStartPipelineInterceptor extends ClassBoundCallInterceptor {
+    private static class ProcessBuilderStartPipelineInterceptor extends ClassBoundCallInterceptor implements FilterableCallInterceptor, InstrumentationInterceptor {
         public ProcessBuilderStartPipelineInterceptor() {
             super(ProcessBuilder.class, InterceptScope.methodsNamed("startPipeline"));
         }
 
         @SuppressWarnings("unchecked")
         @Override
-        protected Object doInterceptSafe(Invocation invocation, String consumer) throws Throwable {
+        protected Object interceptSafe(Invocation invocation, String consumer) throws Throwable {
             if (invocation.getArgsCount() == 1 && invocation.getArgument(0) instanceof List) {
                 return startPipeline((List<ProcessBuilder>) invocation.getArgument(0), consumer);
             }
-            return invocation.callOriginal();
+            return invocation.callNext();
         }
     }
 }

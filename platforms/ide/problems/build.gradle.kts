@@ -16,28 +16,63 @@
 
 plugins {
     id("gradlebuild.distribution.api-java")
+    id("gradlebuild.distribution.implementation-kotlin")
 }
 
-description = """A problems description API
+description = """Problem SPI implementations.
     |
-    |This project provides base classes to describe problems and their
-    |solutions, in a way that enforces the creation of good error messages.
-    |
-    |It's a stripped down version of the original code available
-    |at https://github.com/melix/jdoctor/
+    |This project contains the SPI implementations for the problem reporting infrastructure.
 """.trimMargin()
 
+
+val problemReportReportPath by configurations.creating {
+    isVisible = false
+    isCanBeConsumed = false
+    attributes { attribute(DocsType.DOCS_TYPE_ATTRIBUTE, objects.named("configuration-cache-report")) }
+}
+
+// You can have a faster feedback loop by running `configuration-cache-report` as an included build
+// See https://github.com/gradle/configuration-cache-report#development-with-gradlegradle-and-composite-build
 dependencies {
-    implementation(project(":base-annotations"))
-    implementation(project(":base-services"))
-    implementation(project(":enterprise-operations"))
+    problemReportReportPath(libs.configurationCacheReport)
+}
 
-    implementation(libs.guava)
-    implementation(libs.inject)
+tasks.processResources {
+    from(zipTree(problemReportReportPath.elements.map { it.first().asFile })) {
+        into("org/gradle/internal/impl/problems")
+        exclude("META-INF/**")
+        rename { fileName ->
+            fileName.replace("configuration-cache-report", "problems-report")
+        }
+    }
+}
 
-    integTestImplementation(project(":internal-testing"))
-    integTestImplementation(testFixtures(project(":logging")))
-    integTestDistributionRuntimeOnly(project(":distributions-core"))
+dependencies {
+    api(projects.buildOperations)
+    api(projects.buildOption)
+    api(projects.concurrent)
+    api(projects.configurationProblemsBase)
+    api(projects.core)
+    api(projects.fileTemp)
+    api(projects.loggingApi)
+    api(projects.problemsApi)
+    api(projects.serviceProvider)
+    api(projects.stdlibJavaExtensions)
 
-    testFixturesImplementation(project(":enterprise-operations"))
+    api(libs.jsr305)
+    api(libs.kotlinStdlib)
+
+    implementation(projects.logging)
+    implementation(projects.messaging)
+
+    testImplementation(projects.stdlibKotlinExtensions)
+
+    testImplementation(libs.junit)
+
+    integTestImplementation(projects.internalTesting)
+    integTestImplementation(testFixtures(projects.logging))
+    integTestDistributionRuntimeOnly(projects.distributionsFull)
+}
+tasks.isolatedProjectsIntegTest {
+    enabled = false
 }

@@ -29,9 +29,7 @@ import org.gradle.api.tasks.TaskAction
 import org.gradle.initialization.buildsrc.BuildSrcProjectConfigurationAction
 import org.gradle.kotlin.dsl.*
 import org.gradle.kotlin.dsl.provider.inClassPathMode
-import org.gradle.kotlin.dsl.provider.inLenientMode
-import org.gradle.kotlin.dsl.resolver.buildSrcSourceRootsFilePath
-import org.gradle.language.base.plugins.LifecycleBasePlugin
+import org.gradle.kotlin.dsl.resolver.BUILD_SRC_SOURCE_ROOTS_FILE_PATH
 
 
 internal
@@ -40,19 +38,7 @@ class BuildSrcClassPathModeConfigurationAction : BuildSrcProjectConfigurationAct
     override fun execute(project: ProjectInternal) = project.run {
         if (inClassPathMode()) {
             afterEvaluate {
-                if (inLenientMode()) {
-                    disableVerificationTasks()
-                }
                 configureBuildSrcSourceRootsTask()
-            }
-        }
-    }
-
-    private
-    fun Project.disableVerificationTasks() {
-        allprojects { project ->
-            project.tasks.matching { it.group == LifecycleBasePlugin.VERIFICATION_GROUP }.configureEach { task ->
-                task.enabled = false
             }
         }
     }
@@ -63,7 +49,7 @@ class BuildSrcClassPathModeConfigurationAction : BuildSrcProjectConfigurationAct
             tasks {
                 val generateSourceRoots by registering(GenerateSourceRootsFile::class) {
                     sourceRoots.set(projectDependenciesSourceRootsFrom("runtimeClasspath"))
-                    destinationFile.set(layout.projectDirectory.file(buildSrcSourceRootsFilePath))
+                    destinationFile.set(layout.projectDirectory.file(BUILD_SRC_SOURCE_ROOTS_FILE_PATH))
                 }
                 named("jar") {
                     it.finalizedBy(generateSourceRoots)

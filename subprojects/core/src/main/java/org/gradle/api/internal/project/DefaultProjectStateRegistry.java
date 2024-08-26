@@ -15,7 +15,6 @@
  */
 package org.gradle.api.internal.project;
 
-import com.google.common.collect.Maps;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.component.BuildIdentifier;
 import org.gradle.api.artifacts.component.ProjectComponentIdentifier;
@@ -44,6 +43,8 @@ import java.io.Closeable;
 import java.io.File;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
@@ -55,9 +56,9 @@ import java.util.function.Function;
 public class DefaultProjectStateRegistry implements ProjectStateRegistry, Closeable {
     private final WorkerLeaseService workerLeaseService;
     private final Object lock = new Object();
-    private final Map<Path, ProjectStateImpl> projectsByPath = Maps.newLinkedHashMap();
-    private final Map<ProjectComponentIdentifier, ProjectStateImpl> projectsById = Maps.newHashMap();
-    private final Map<BuildIdentifier, DefaultBuildProjectRegistry> projectsByBuild = Maps.newHashMap();
+    private final Map<Path, ProjectStateImpl> projectsByPath = new LinkedHashMap<>();
+    private final Map<ProjectComponentIdentifier, ProjectStateImpl> projectsById = new HashMap<>();
+    private final Map<BuildIdentifier, DefaultBuildProjectRegistry> projectsByBuild = new HashMap<>();
 
     public DefaultProjectStateRegistry(WorkerLeaseService workerLeaseService) {
         this.workerLeaseService = workerLeaseService;
@@ -110,14 +111,12 @@ public class DefaultProjectStateRegistry implements ProjectStateRegistry, Closea
     private ProjectState addProject(BuildState owner, DefaultBuildProjectRegistry projectRegistry, DefaultProjectDescriptor descriptor) {
         Path projectPath = descriptor.path();
         Path identityPath = owner.calculateIdentityPathForProject(projectPath);
-        String name = descriptor.getName();
-        ProjectComponentIdentifier projectIdentifier = new DefaultProjectComponentIdentifier(owner.getBuildIdentifier(), identityPath, projectPath, name);
         ServiceRegistry buildServices = owner.getMutableModel().getServices();
         IProjectFactory projectFactory = buildServices.get(IProjectFactory.class);
         StateTransitionControllerFactory stateTransitionControllerFactory = buildServices.get(StateTransitionControllerFactory.class);
-        ProjectStateImpl projectState = new ProjectStateImpl(owner, identityPath, projectPath, descriptor.getName(), projectIdentifier, descriptor, projectFactory, stateTransitionControllerFactory, buildServices);
+        ProjectStateImpl projectState = new ProjectStateImpl(owner, identityPath, projectPath, descriptor.getName(), descriptor, projectFactory, stateTransitionControllerFactory, buildServices);
         projectsByPath.put(identityPath, projectState);
-        projectsById.put(projectIdentifier, projectState);
+        projectsById.put(projectState.getComponentIdentifier(), projectState);
         projectRegistry.add(projectPath, projectState);
         return projectState;
     }
@@ -189,7 +188,7 @@ public class DefaultProjectStateRegistry implements ProjectStateRegistry, Closea
     private static class DefaultBuildProjectRegistry implements BuildProjectRegistry {
         private final BuildState owner;
         private final WorkerLeaseService workerLeaseService;
-        private final Map<Path, ProjectStateImpl> projectsByPath = Maps.newLinkedHashMap();
+        private final Map<Path, ProjectStateImpl> projectsByPath = new LinkedHashMap<>();
 
         public DefaultBuildProjectRegistry(BuildState owner, WorkerLeaseService workerLeaseService) {
             this.owner = owner;
@@ -248,6 +247,7 @@ public class DefaultProjectStateRegistry implements ProjectStateRegistry, Closea
         private final IProjectFactory projectFactory;
         private final BuildState owner;
         private final Path identityPath;
+        private final ProjectIdentity identity;
         private final ResourceLock allProjectsLock;
         private final ResourceLock projectLock;
         private final ResourceLock taskLock;
@@ -260,7 +260,6 @@ public class DefaultProjectStateRegistry implements ProjectStateRegistry, Closea
             Path identityPath,
             Path projectPath,
             String projectName,
-            ProjectComponentIdentifier identifier,
             DefaultProjectDescriptor descriptor,
             IProjectFactory projectFactory,
             StateTransitionControllerFactory stateTransitionControllerFactory,
@@ -270,9 +269,10 @@ public class DefaultProjectStateRegistry implements ProjectStateRegistry, Closea
             this.identityPath = identityPath;
             this.projectPath = projectPath;
             this.projectName = projectName;
-            this.identifier = identifier;
             this.descriptor = descriptor;
             this.projectFactory = projectFactory;
+            this.identity = new ProjectIdentity(owner.getBuildIdentifier(), identityPath, projectPath, projectName);
+            this.identifier = new DefaultProjectComponentIdentifier(identity);
             this.allProjectsLock = workerLeaseService.getAllProjectsLock(owner.getIdentityPath());
             this.projectLock = workerLeaseService.getProjectLock(owner.getIdentityPath(), identityPath);
             this.taskLock = workerLeaseService.getTaskExecutionLock(owner.getIdentityPath(), identityPath);
@@ -338,6 +338,11 @@ public class DefaultProjectStateRegistry implements ProjectStateRegistry, Closea
         @Override
         public Path getIdentityPath() {
             return identityPath;
+        }
+
+        @Override
+        public ProjectIdentity getIdentity() {
+            return identity;
         }
 
         @Override

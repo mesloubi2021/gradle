@@ -1,29 +1,42 @@
 plugins {
     id("gradlebuild.distribution.api-java")
+    id("gradlebuild.instrumented-java-project")
 }
 
 description = "Implementation for interacting with HTTP build caches"
 
 dependencies {
-    implementation(project(":base-services"))
-    implementation(project(":build-cache"))
-    implementation(project(":core-api"))
-    implementation(project(":core"))
-    implementation(project(":logging"))
-    implementation(project(":problems"))
-    implementation(project(":resources"))
-    implementation(project(":resources-http"))
+    api(projects.stdlibJavaExtensions)
+    api(projects.serviceProvider)
 
-    implementation(libs.slf4jApi)
-    implementation(libs.guava)
+    api(libs.httpcore)
+    api(libs.inject)
+    api(libs.jsr305)
+
+    api(projects.baseServices)
+    api(projects.buildCacheSpi)
+    api(projects.coreApi)
+    api(projects.resourcesHttp)
+
+    implementation(projects.core)
+    implementation(projects.logging)
+    implementation(projects.resources)
+
     implementation(libs.commonsHttpclient)
-    implementation(libs.inject)
+    implementation(libs.guava)
+    implementation(libs.slf4jApi)
 
-    testImplementation(testFixtures(project(":core")))
+    testImplementation(testFixtures(projects.core))
     testImplementation(libs.servletApi)
 
-    integTestImplementation(project(":enterprise-operations"))
+    integTestImplementation(projects.enterpriseOperations)
+    integTestImplementation(testFixtures(projects.buildCache))
     integTestImplementation(libs.jetty)
 
-    integTestDistributionRuntimeOnly(project(":distributions-basics"))
+    integTestDistributionRuntimeOnly(projects.distributionsJvm) {
+        because("Uses application plugin.")
+    }
+}
+tasks.isolatedProjectsIntegTest {
+    enabled = false
 }
