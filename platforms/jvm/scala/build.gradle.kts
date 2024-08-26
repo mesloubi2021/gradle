@@ -1,5 +1,6 @@
 plugins {
     id("gradlebuild.distribution.api-java")
+    id("gradlebuild.instrumented-java-project")
 }
 
 description = "Plugins for building Scala code with Gradle."
@@ -32,7 +33,6 @@ dependencies {
     api(libs.inject)
     api(libs.jsr305)
 
-    implementation(projects.internalInstrumentationApi)
     implementation(projects.time)
     implementation(projects.serviceLookup)
     implementation(projects.dependencyManagement)
@@ -98,8 +98,6 @@ packageCycles {
 }
 
 integTest.usesJavadocCodeSnippets = true
-
-// Remove as part of fixing https://github.com/gradle/configuration-cache/issues/585
-tasks.configCacheIntegTest {
-    systemProperties["org.gradle.configuration-cache.internal.test-disable-load-after-store"] = "true"
+tasks.isolatedProjectsIntegTest {
+    enabled = false
 }

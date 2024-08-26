@@ -23,7 +23,6 @@ description = "JVM invocation and inspection abstractions"
 errorprone {
     disabledChecks.addAll(
         "DefaultCharset", // 2 occurrences
-        "StringCaseLocaleUsage", // 1 occurrences
     )
 }
 
@@ -58,4 +57,7 @@ dependencies {
     testImplementation(testFixtures(projects.core))
 
     integTestDistributionRuntimeOnly(projects.distributionsCore)
+}
+tasks.isolatedProjectsIntegTest {
+    enabled = false
 }

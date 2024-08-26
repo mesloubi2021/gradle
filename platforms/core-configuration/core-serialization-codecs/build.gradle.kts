@@ -52,6 +52,10 @@ dependencies {
     implementation(projects.stdlibKotlinExtensions)
 
     implementation(libs.asm)
+    implementation(libs.fastutil)
     implementation(libs.groovy)
     implementation(libs.guava)
+}
+tasks.isolatedProjectsIntegTest {
+    enabled = false
 }

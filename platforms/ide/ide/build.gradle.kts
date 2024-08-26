@@ -9,7 +9,6 @@ errorprone {
         "EmptyBlockTag", // 1 occurrences
         "LoopOverCharArray", // 1 occurrences
         "ObjectEqualsForPrimitives", // 3 occurrences
-        "StringCaseLocaleUsage", // 2 occurrences
     )
 }
 
@@ -92,3 +91,6 @@ packageCycles {
 
 integTest.usesJavadocCodeSnippets = true
 testFilesCleanup.reportOnly = true
+tasks.isolatedProjectsIntegTest {
+    enabled = false
+}

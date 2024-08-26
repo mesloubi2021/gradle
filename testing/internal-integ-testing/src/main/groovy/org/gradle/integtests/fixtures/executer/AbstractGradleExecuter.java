@@ -50,6 +50,7 @@ import org.gradle.internal.nativeintegration.console.TestOverrideConsoleDetector
 import org.gradle.internal.nativeintegration.services.NativeServices;
 import org.gradle.internal.scripts.ScriptFileUtil;
 import org.gradle.internal.service.ServiceRegistry;
+import org.gradle.jvm.toolchain.internal.AutoInstalledInstallationSupplier;
 import org.gradle.jvm.toolchain.internal.ToolchainConfiguration;
 import org.gradle.launcher.cli.WelcomeMessageAction;
 import org.gradle.launcher.daemon.configuration.DaemonBuildOptions;
@@ -62,7 +63,6 @@ import org.gradle.util.GradleVersion;
 import org.gradle.util.internal.ClosureBackedAction;
 import org.gradle.util.internal.CollectionUtils;
 import org.gradle.util.internal.GFileUtils;
-import org.gradle.util.internal.TextUtil;
 
 import java.io.File;
 import java.io.IOException;
@@ -198,6 +198,7 @@ public abstract class AbstractGradleExecuter implements GradleExecuter, Resettab
     protected boolean noExplicitNativeServicesDir;
     private boolean fullDeprecationStackTrace;
     private boolean checkDeprecations = true;
+    private boolean filterJavaVersionDeprecation = true;
     private boolean checkDaemonCrash = true;
 
     private TestFile tmpDir;
@@ -220,6 +221,10 @@ public abstract class AbstractGradleExecuter implements GradleExecuter, Resettab
         this.gradleUserHomeDir = buildContext.getGradleUserHomeDir();
         this.daemonBaseDir = buildContext.getDaemonBaseDir();
         this.daemonCrashLogsBeforeTest = ImmutableSet.copyOf(DaemonLogsAnalyzer.findCrashLogs(daemonBaseDir));
+
+        if (gradleVersion.compareTo(GradleVersion.version("4.5.0")) < 0) {
+            warningMode = null;
+        }
     }
 
     protected Logger getLogger() {
@@ -263,6 +268,7 @@ public abstract class AbstractGradleExecuter implements GradleExecuter, Resettab
         profiler = System.getProperty(PROFILE_SYSPROP, "");
         interactive = false;
         checkDeprecations = true;
+        filterJavaVersionDeprecation = true;
         durationMeasurement = null;
         consoleType = null;
         warningMode = WarningMode.All;
@@ -416,6 +422,10 @@ public abstract class AbstractGradleExecuter implements GradleExecuter, Resettab
 
         if (!checkDeprecations) {
             executer.noDeprecationChecks();
+        }
+
+        if (!filterJavaVersionDeprecation) {
+            executer.disableDaemonJavaVersionDeprecationFiltering();
         }
 
         if (durationMeasurement != null) {
@@ -1105,15 +1115,19 @@ public abstract class AbstractGradleExecuter implements GradleExecuter, Resettab
         }
 
         if (consoleType != null) {
-            allArgs.add("--console=" + TextUtil.toLowerCaseLocaleSafe(consoleType.toString()));
+            String s = consoleType.toString();
+            allArgs.add("--console=" + s.toLowerCase(Locale.ROOT));
         }
 
+        // Rich console output is difficult to check, so we disable warnings
+        WarningMode warningMode = isRichConsole() ? WarningMode.None : this.warningMode;
         if (warningMode != null) {
-            allArgs.add("--warning-mode=" + TextUtil.toLowerCaseLocaleSafe(warningMode.toString()));
+            String s = warningMode.toString();
+            allArgs.add("--warning-mode=" + s.toLowerCase(Locale.ROOT));
         }
 
         if (disableToolchainDownload) {
-            allArgs.add("-Porg.gradle.java.installations.auto-download=false");
+            allArgs.add("-P" + AutoInstalledInstallationSupplier.AUTO_DOWNLOAD + "=false");
         }
         if (disableToolchainDetection) {
             allArgs.add("-P" + ToolchainConfiguration.AUTO_DETECT + "=false");
@@ -1349,19 +1363,39 @@ public abstract class AbstractGradleExecuter implements GradleExecuter, Resettab
     protected Action<ExecutionResult> getResultAssertion() {
         boolean shouldCheckDeprecations = checkDeprecations;
 
-        // Rich consoles mess with our deprecation log scraping
-        boolean isAuto = consoleType == null || consoleType == ConsoleOutput.Auto;
-        if ((isAuto && consoleAttachment != ConsoleAttachment.NOT_ATTACHED) ||
-            consoleType == ConsoleOutput.Verbose ||
-            consoleType == ConsoleOutput.Rich
-        ) {
+        // Rich consoles mess with our deprecation log scraping,
+        // and we anyway set --warning-mode=none for rich consoles, see #getAllArgs()
+        if (isRichConsole()) {
             shouldCheckDeprecations = false;
         }
 
+        List<ExpectedDeprecationWarning> maybeExpectedDeprecationWarnings = new ArrayList<>();
+        if (filterJavaVersionDeprecation) {
+            maybeExpectedDeprecationWarnings.add(ExpectedDeprecationWarning.withMessage(normalizeDocumentationLink(
+                "Executing Gradle on JVM versions 16 and lower has been deprecated. " +
+                    "This will fail with an error in Gradle 9.0. " +
+                    "Use JVM 17 or greater to execute Gradle. " +
+                    "Projects can continue to use older JVM versions via toolchains. " +
+                    "Consult the upgrading guide for further information: " +
+                    "https://docs.gradle.org/current/userguide/upgrading_version_8.html#minimum_daemon_jvm_version"
+            )));
+        }
+
         return new ResultAssertion(
-            expectedGenericDeprecationWarnings, expectedDeprecationWarnings,
-            !stackTraceChecksOn, shouldCheckDeprecations, jdkWarningChecksOn
+            expectedGenericDeprecationWarnings,
+            expectedDeprecationWarnings,
+            maybeExpectedDeprecationWarnings,
+            !stackTraceChecksOn,
+            shouldCheckDeprecations,
+            jdkWarningChecksOn
         );
+    }
+
+    private boolean isRichConsole() {
+        boolean isAuto = consoleType == null || consoleType == ConsoleOutput.Auto;
+        return isAuto && consoleAttachment != ConsoleAttachment.NOT_ATTACHED
+            || consoleType == ConsoleOutput.Verbose
+            || consoleType == ConsoleOutput.Rich;
     }
 
     @Override
@@ -1392,13 +1426,19 @@ public abstract class AbstractGradleExecuter implements GradleExecuter, Resettab
         if (gradleVersionOverride != null) {
             return DocumentationUtils.normalizeDocumentationLink(warning, gradleVersionOverride);
         } else {
-            return DocumentationUtils.normalizeDocumentationLink(warning);
+            return DocumentationUtils.normalizeDocumentationLink(warning, gradleVersion);
         }
     }
 
     @Override
     public GradleExecuter noDeprecationChecks() {
         checkDeprecations = false;
+        return this;
+    }
+
+    @Override
+    public GradleExecuter disableDaemonJavaVersionDeprecationFiltering() {
+        filterJavaVersionDeprecation = false;
         return this;
     }
 

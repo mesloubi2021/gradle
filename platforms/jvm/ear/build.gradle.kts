@@ -1,5 +1,6 @@
 plugins {
     id("gradlebuild.distribution.api-java")
+    id("gradlebuild.instrumented-java-project")
 }
 
 description = "Adds support for assembling web application EAR files"
@@ -7,7 +8,6 @@ description = "Adds support for assembling web application EAR files"
 errorprone {
     disabledChecks.addAll(
         "DefaultCharset", // 2 occurrences
-        "StringCaseLocaleUsage", // 1 occurrences
     )
 }
 
@@ -22,7 +22,6 @@ dependencies {
     api(projects.modelCore)
     api(projects.platformJvm)
 
-    implementation(projects.internalInstrumentationApi)
     implementation(projects.serviceLookup)
     implementation(projects.stdlibJavaExtensions)
     implementation(projects.core)
@@ -57,4 +56,7 @@ strictCompile {
 
 packageCycles {
     excludePatterns.add("org/gradle/plugins/ear/internal/*")
+}
+tasks.isolatedProjectsIntegTest {
+    enabled = false
 }

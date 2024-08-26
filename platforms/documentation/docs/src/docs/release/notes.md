@@ -8,6 +8,7 @@ Include only their name, impactful features should be called out separately belo
 
  THIS LIST SHOULD BE ALPHABETIZED BY [PERSON NAME] - the docs:updateContributorsInReleaseNotes task will enforce this ordering, which is case-insensitive.
 -->
+
 We would like to thank the following community members for their contributions to this release of Gradle:
 
 Be sure to check out the [public roadmap](https://blog.gradle.org/roadmap-announcement) for insight into what's planned for future releases.
@@ -52,20 +53,16 @@ Example:
 ADD RELEASE FEATURES BELOW
 vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv -->
 
-<a name="config-cache"></a>
-### Configuration cache improvements
+<a name="native-plugin-improvements"></a>
+### Core plugin improvements
 
-The [configuration cache](userguide/configuration_cache.html) improves build performance by caching the result of
-the configuration phase. Using the configuration cache, Gradle can skip the configuration phase entirely when
-nothing that affects the build configuration has changed.
+Gradle provides core plugins for build authors, offering essential tools to simplify project setup and configuration across various languages and platforms.
 
-#### Report improvements
+#### Configuration cache compatibility for Swift and C++ plugins
 
-TBD:
-- Incompatible tasks tab
-- Copy experience
-- Invalidation reason
+The [Swift](userguide/swift_application_plugin.html) and [C++](userguide/cpp_application_plugin.html) core plugins are now [configuration cache](userguide/performance.html#enable_configuration_cache) compatible.
 
+The [`xctest`](userguide/xctest_plugin.html) and [`visual-studio`](userguide/visual_studio_plugin.html) plugins are not yet compatible.
 
 <!-- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ADD RELEASE FEATURES ABOVE

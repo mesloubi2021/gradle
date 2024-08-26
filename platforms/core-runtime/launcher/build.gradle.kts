@@ -30,7 +30,7 @@ dependencies {
     api(projects.messaging)
     api(projects.modelCore)
     api(projects.native)
-    api(projects.processServices)
+    api(projects.processMemoryServices)
     api(projects.serialization)
     api(projects.serviceLookup)
     api(projects.serviceProvider)
@@ -90,3 +90,6 @@ strictCompile {
 }
 
 testFilesCleanup.reportOnly = true
+tasks.isolatedProjectsIntegTest {
+    enabled = false
+}

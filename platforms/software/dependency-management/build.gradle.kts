@@ -36,7 +36,6 @@ errorprone {
         "ReferenceEquality", // 10 occurrences
         "SameNameButDifferent", // 4 occurrences
         "StreamResourceLeak", // 1 occurrences
-        "StringCaseLocaleUsage", // 3 occurrences
         "StringCharset", // 1 occurrences
         "TypeParameterShadowing", // 4 occurrences
         "TypeParameterUnusedInFormals", // 2 occurrences
@@ -88,6 +87,7 @@ dependencies {
     api(libs.slf4jApi)
 
     implementation(projects.time)
+    implementation(projects.baseAsm)
     implementation(projects.baseServicesGroovy)
     implementation(projects.loggingApi)
     implementation(projects.resourcesHttp)
@@ -188,4 +188,7 @@ tasks.clean {
             include("**/read-only-cache/**")
         }.visit { this.file.setWritable(true) }
     }
+}
+tasks.isolatedProjectsIntegTest {
+    enabled = false
 }

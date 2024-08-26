@@ -5,12 +5,6 @@ plugins {
 
 description = "Implementation of configuration model types and annotation metadata handling (Providers, software model, conventions)"
 
-errorprone {
-    disabledChecks.addAll(
-        "UnusedVariable", // This cannot really be turned off, because of the false positive in errorprone (https://github.com/google/error-prone/issues/4409)
-    )
-}
-
 dependencies {
     api(projects.serialization)
     api(projects.serviceLookup)
@@ -48,6 +42,7 @@ dependencies {
     testFixturesApi(testFixtures(projects.diagnostics))
     testFixturesApi(testFixtures(projects.core))
     testFixturesApi(projects.internalIntegTesting)
+    testFixturesImplementation(projects.baseAsm)
     testFixturesImplementation(libs.guava)
     testFixturesImplementation(libs.groovyAnt)
     testFixturesImplementation(libs.groovyDatetime)
@@ -93,4 +88,7 @@ packageCycles {
     // cycle between org.gradle.api.internal.provider and org.gradle.util.internal
     // (api.internal.provider -> ConfigureUtil, DeferredUtil -> api.internal.provider)
     excludePatterns.add("org/gradle/util/internal/*")
+}
+tasks.isolatedProjectsIntegTest {
+    enabled = false
 }

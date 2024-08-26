@@ -9,7 +9,6 @@ errorprone {
         "DefaultCharset", // 1 occurrences
         "JavaLangClash", // 1 occurrences
         "MixedMutabilityReturnType", // 1 occurrences
-        "StringCaseLocaleUsage", // 1 occurrences
         "UnusedMethod", // 2 occurrences
         "UnusedVariable", // 10 occurrences
     )
@@ -90,8 +89,6 @@ packageCycles {
 }
 
 integTest.usesJavadocCodeSnippets = true
-
-// Remove as part of fixing https://github.com/gradle/configuration-cache/issues/585
-tasks.configCacheIntegTest {
-    systemProperties["org.gradle.configuration-cache.internal.test-disable-load-after-store"] = "true"
+tasks.isolatedProjectsIntegTest {
+    enabled = false
 }

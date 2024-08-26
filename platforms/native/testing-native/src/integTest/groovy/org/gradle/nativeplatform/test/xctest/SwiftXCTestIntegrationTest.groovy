@@ -39,9 +39,11 @@ import org.gradle.nativeplatform.fixtures.app.SwiftXCTestWithDepAndCustomXCTestS
 import org.gradle.nativeplatform.fixtures.app.XCTestCaseElement
 import org.gradle.nativeplatform.fixtures.app.XCTestSourceElement
 import org.gradle.nativeplatform.fixtures.app.XCTestSourceFileElement
+import org.gradle.test.fixtures.file.DoesNotSupportNonAsciiPaths
 import org.junit.Assume
 
 @RequiresInstalledToolChain(ToolChainRequirement.SWIFTC)
+@DoesNotSupportNonAsciiPaths(reason = "swiftc does not support these paths")
 class SwiftXCTestIntegrationTest extends AbstractInstalledToolChainIntegrationSpec implements XCTestExecutionResult, SwiftTaskNames {
     def setup() {
         buildFile << """
@@ -49,6 +51,9 @@ apply plugin: 'xctest'
 """
         // TODO: Temporarily disable XCTests with Swift3 on macOS
         Assume.assumeFalse(OperatingSystem.current().isMacOsX() && toolChain.version.major == 3)
+
+        // Need XCTest available to run these tests
+        XCTestInstallation.assumeInstalled()
     }
 
     @ToBeFixedForConfigurationCache
@@ -212,6 +217,7 @@ dependencies {
         result.assertTasksSkipped(":assemble")
     }
 
+    @ToBeFixedForConfigurationCache
     def "skips test tasks when no source is available for Swift library"() {
         given:
         buildFile << "apply plugin: 'swift-library'"
@@ -224,6 +230,7 @@ dependencies {
         result.assertTasksSkipped(tasks.debug.compile, tasks.test.allToInstall, ":xcTest", ":test")
     }
 
+    @ToBeFixedForConfigurationCache
     def "skips test tasks when no source is available for Swift application"() {
         given:
         buildFile << """
@@ -459,7 +466,7 @@ apply plugin: 'swift-library'
         app.greeter.writeToProject(file('hello'))
         app.logger.writeToProject(file('log'))
 
-        def test = new SwiftXCTestWithDepAndCustomXCTestSuite('bundle', 'Main','XCTAssert(main() == 0)', ['App'] as String[], [] as String[])
+        def test = new SwiftXCTestWithDepAndCustomXCTestSuite('bundle', 'Main', 'XCTAssert(main() == 0)', ['App'] as String[], [] as String[])
         test.writeToProject(testDirectory)
 
         when:

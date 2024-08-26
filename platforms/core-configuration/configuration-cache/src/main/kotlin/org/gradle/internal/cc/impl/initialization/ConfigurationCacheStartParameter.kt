@@ -24,6 +24,7 @@ import org.gradle.initialization.layout.BuildLayout
 import org.gradle.internal.Factory
 import org.gradle.internal.buildoption.InternalOptions
 import org.gradle.internal.buildtree.BuildModelParameters
+import org.gradle.internal.cc.impl.ConfigurationCacheLoggingParameters
 import org.gradle.internal.cc.impl.Workarounds
 import org.gradle.internal.deprecation.DeprecationLogger
 import org.gradle.internal.extensions.core.getInternalFlag
@@ -34,11 +35,12 @@ import java.io.File
 
 
 @ServiceScope(Scope.BuildTree::class)
-class ConfigurationCacheStartParameter(
+class ConfigurationCacheStartParameter internal constructor(
     private val buildLayout: BuildLayout,
     private val startParameter: StartParameterInternal,
     options: InternalOptions,
-    private val modelParameters: BuildModelParameters
+    private val modelParameters: BuildModelParameters,
+    private val loggingParameters: ConfigurationCacheLoggingParameters,
 ) {
 
     /**
@@ -64,12 +66,20 @@ class ConfigurationCacheStartParameter(
      */
     val alwaysLogReportLinkAsWarning: Boolean = options.getInternalFlag("org.gradle.configuration-cache.internal.report-link-as-warning", false)
 
+    /**
+     * Whether strings stored to the configuration cache should be deduplicated
+     * in order to save space on disk and to use less memory on a cache hit.
+     *
+     * The default is `true`.
+     */
+    val isDeduplicatingStrings: Boolean = options.getInternalFlag("org.gradle.configuration-cache.internal.deduplicate-strings", true)
+
     val gradleProperties: Map<String, Any?>
         get() = startParameter.projectProperties
             .filterKeys { !Workarounds.isIgnoredStartParameterProperty(it) }
 
     val configurationCacheLogLevel: LogLevel
-        get() = modelParameters.configurationCacheLogLevel
+        get() = loggingParameters.logLevel
 
     val isIgnoreInputsInTaskGraphSerialization: Boolean
         get() = startParameter.isConfigurationCacheIgnoreInputsInTaskGraphSerialization

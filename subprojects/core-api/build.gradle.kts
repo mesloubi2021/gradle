@@ -1,6 +1,6 @@
 plugins {
     id("gradlebuild.distribution.api-java")
-    id("gradlebuild.instrumented-project")
+    id("gradlebuild.instrumented-java-project")
 }
 
 description = "Public and internal 'core' Gradle APIs that are required by other subprojects"
@@ -67,3 +67,6 @@ strictCompile {
 
 integTest.usesJavadocCodeSnippets = true
 testFilesCleanup.reportOnly = true
+tasks.isolatedProjectsIntegTest {
+    enabled = false
+}

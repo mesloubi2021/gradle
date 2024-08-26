@@ -49,7 +49,6 @@ import org.gradle.api.internal.CollectionCallbackActionDecorator;
 import org.gradle.api.internal.DomainObjectContext;
 import org.gradle.api.internal.DynamicObjectAware;
 import org.gradle.api.internal.GradleInternal;
-import org.gradle.api.internal.MutationGuards;
 import org.gradle.api.internal.ProcessOperations;
 import org.gradle.api.internal.artifacts.DependencyManagementServices;
 import org.gradle.api.internal.artifacts.DependencyResolutionServices;
@@ -460,10 +459,10 @@ public abstract class DefaultProject extends AbstractPluginAware implements Proj
     public Object getGroup() {
         if (group != null) {
             return group;
-        } else if (this == rootProject) {
+        } else if (this.equals(rootProject)) {
             return "";
         }
-        group = rootProject.getName() + (getParent() == rootProject ? "" : "." + getParent().getPath().substring(1).replace(':', '.'));
+        group = rootProject.getName() + (getParent().equals(rootProject) ? "" : "." + getParent().getPath().substring(1).replace(':', '.'));
         return group;
     }
 
@@ -511,7 +510,12 @@ public abstract class DefaultProject extends AbstractPluginAware implements Proj
 
     @Override
     public Map<String, Project> getChildProjects() {
-        return getCrossProjectModelAccess().getChildProjects(this, this);
+        return getChildProjects(this);
+    }
+
+    @Override
+    public Map<String, Project> getChildProjects(ProjectInternal referrer) {
+        return getCrossProjectModelAccess().getChildProjects(referrer, this);
     }
 
     @Override
@@ -603,9 +607,14 @@ public abstract class DefaultProject extends AbstractPluginAware implements Proj
     }
 
     @Override
-    @Nonnull
     public Path getProjectPath() {
         return owner.getProjectPath();
+    }
+
+    @Nonnull
+    @Override
+    public ProjectIdentity getProjectIdentity() {
+        return owner.getIdentity();
     }
 
     @Override
@@ -690,7 +699,7 @@ public abstract class DefaultProject extends AbstractPluginAware implements Proj
 
     @Override
     public void allprojects(ProjectInternal referrer, Action<? super Project> action) {
-        getProjectConfigurator().allprojects(getCrossProjectModelAccess().getAllprojects(referrer, this), action);
+        getProjectConfigurator().allprojects(getAllprojects(referrer), action);
     }
 
     @Override
@@ -715,7 +724,7 @@ public abstract class DefaultProject extends AbstractPluginAware implements Proj
 
     @Override
     public void subprojects(ProjectInternal referrer, Action<? super Project> configureAction) {
-        getProjectConfigurator().subprojects(getCrossProjectModelAccess().getSubprojects(referrer, this), configureAction);
+        getProjectConfigurator().subprojects(getSubprojects(referrer), configureAction);
     }
 
     @Override
@@ -1034,26 +1043,26 @@ public abstract class DefaultProject extends AbstractPluginAware implements Proj
 
     @Override
     public void beforeEvaluate(Action<? super Project> action) {
-        assertMutatingMethodAllowed("beforeEvaluate(Action)");
+        assertEagerContext("beforeEvaluate(Action)");
         evaluationListener.add("beforeEvaluate", getListenerBuildOperationDecorator().decorate("Project.beforeEvaluate", action));
     }
 
     @Override
     public void afterEvaluate(Action<? super Project> action) {
-        assertMutatingMethodAllowed("afterEvaluate(Action)");
+        assertEagerContext("afterEvaluate(Action)");
         failAfterProjectIsEvaluated("afterEvaluate(Action)");
         evaluationListener.add("afterEvaluate", getListenerBuildOperationDecorator().decorate("Project.afterEvaluate", action));
     }
 
     @Override
     public void beforeEvaluate(Closure closure) {
-        assertMutatingMethodAllowed("beforeEvaluate(Closure)");
+        assertEagerContext("beforeEvaluate(Closure)");
         evaluationListener.add(new ClosureBackedMethodInvocationDispatch("beforeEvaluate", getListenerBuildOperationDecorator().decorate("Project.beforeEvaluate", Cast.<Closure<?>>uncheckedNonnullCast(closure))));
     }
 
     @Override
     public void afterEvaluate(Closure closure) {
-        assertMutatingMethodAllowed("afterEvaluate(Closure)");
+        assertEagerContext("afterEvaluate(Closure)");
         failAfterProjectIsEvaluated("afterEvaluate(Closure)");
         evaluationListener.add(new ClosureBackedMethodInvocationDispatch("afterEvaluate", getListenerBuildOperationDecorator().decorate("Project.afterEvaluate", Cast.<Closure<?>>uncheckedNonnullCast(closure))));
     }
@@ -1462,8 +1471,12 @@ public abstract class DefaultProject extends AbstractPluginAware implements Proj
             : nextBatch.getSource();
     }
 
-    private void assertMutatingMethodAllowed(String methodName) {
-        MutationGuards.of(getProjectConfigurator()).assertMutationAllowed(methodName, this, Project.class);
+    /**
+     * Assert that the current thread is not running a lazy action on a domain object within this project.
+     *  This method should be called by methods that must not be called in lazy actions.
+     */
+    private void assertEagerContext(String methodName) {
+        getProjectConfigurator().getLazyBehaviorGuard().assertEagerContext(methodName, this, Project.class);
     }
 
     @Override
@@ -1545,14 +1558,14 @@ public abstract class DefaultProject extends AbstractPluginAware implements Proj
 
         @Override
         @Nullable
-        public Path getProjectPath() {
-            return delegate.getProjectPath();
-        }
-
-        @Override
-        @Nullable
         public ProjectInternal getProject() {
             return delegate.getProject();
+        }
+
+        @Nullable
+        @Override
+        public ProjectIdentity getProjectIdentity() {
+            return delegate.getProjectIdentity();
         }
 
         @Override
@@ -1583,6 +1596,11 @@ public abstract class DefaultProject extends AbstractPluginAware implements Proj
         @Override
         public boolean isDetachedState() {
             return true;
+        }
+
+        @Override
+        public String getDisplayName() {
+            return "detached context of " + delegate.getDisplayName();
         }
     }
 }

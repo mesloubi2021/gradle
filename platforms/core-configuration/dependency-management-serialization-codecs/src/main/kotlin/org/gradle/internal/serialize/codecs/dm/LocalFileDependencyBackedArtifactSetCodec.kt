@@ -45,7 +45,6 @@ import org.gradle.api.internal.artifacts.transform.TransformUpstreamDependencies
 import org.gradle.api.internal.artifacts.transform.TransformedVariantFactory
 import org.gradle.api.internal.artifacts.transform.VariantDefinition
 import org.gradle.api.internal.artifacts.type.DefaultArtifactTypeRegistry
-import org.gradle.api.internal.attributes.AttributeContainerInternal
 import org.gradle.api.internal.attributes.AttributesSchemaInternal
 import org.gradle.api.internal.attributes.EmptySchema
 import org.gradle.api.internal.attributes.ImmutableAttributes
@@ -219,8 +218,8 @@ class RecordingVariantSet(
         return EmptySchema.INSTANCE
     }
 
-    override fun getVariants(): Set<ResolvedVariant> {
-        return setOf(this)
+    override fun getVariants(): List<ResolvedVariant> {
+        return listOf(this)
     }
 
     override fun getOverriddenAttributes(): ImmutableAttributes {
@@ -231,7 +230,7 @@ class RecordingVariantSet(
         return null
     }
 
-    override fun getAttributes(): AttributeContainerInternal {
+    override fun getAttributes(): ImmutableAttributes {
         return attributes
     }
 

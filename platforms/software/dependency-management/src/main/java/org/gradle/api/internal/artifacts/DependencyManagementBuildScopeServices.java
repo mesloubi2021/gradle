@@ -22,8 +22,6 @@ import org.gradle.api.internal.ClassPathRegistry;
 import org.gradle.api.internal.CollectionCallbackActionDecorator;
 import org.gradle.api.internal.DocumentationRegistry;
 import org.gradle.api.internal.GradleInternal;
-import org.gradle.api.internal.artifacts.component.ComponentIdentifierFactory;
-import org.gradle.api.internal.artifacts.component.DefaultComponentIdentifierFactory;
 import org.gradle.api.internal.artifacts.configurations.DependencyMetaDataProvider;
 import org.gradle.api.internal.artifacts.dsl.CapabilityNotationParser;
 import org.gradle.api.internal.artifacts.dsl.CapabilityNotationParserFactory;
@@ -82,7 +80,6 @@ import org.gradle.api.internal.properties.GradleProperties;
 import org.gradle.api.internal.resources.ApiTextResourceAdapter;
 import org.gradle.api.internal.runtimeshaded.RuntimeShadedJarFactory;
 import org.gradle.api.internal.tasks.TaskDependencyFactory;
-import org.gradle.api.model.BuildTreeObjectFactory;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.problems.internal.InternalProblems;
 import org.gradle.cache.internal.CleaningInMemoryCacheDecoratorFactory;
@@ -93,16 +90,14 @@ import org.gradle.cache.scopes.BuildScopedCacheBuilderFactory;
 import org.gradle.cache.scopes.GlobalScopedCacheBuilderFactory;
 import org.gradle.initialization.DependenciesAccessors;
 import org.gradle.internal.build.BuildModelLifecycleListener;
-import org.gradle.internal.build.BuildState;
-import org.gradle.internal.build.BuildStateRegistry;
 import org.gradle.internal.buildoption.FeatureFlags;
 import org.gradle.internal.classpath.ClasspathBuilder;
 import org.gradle.internal.classpath.ClasspathWalker;
 import org.gradle.internal.code.UserCodeApplicationContext;
-import org.gradle.internal.component.resolution.failure.ResolutionFailureHandler;
 import org.gradle.internal.component.external.model.ModuleComponentArtifactMetadata;
 import org.gradle.internal.component.model.GraphVariantSelector;
 import org.gradle.internal.component.resolution.failure.ResolutionFailureDescriberRegistry;
+import org.gradle.internal.component.resolution.failure.ResolutionFailureHandler;
 import org.gradle.internal.event.ListenerManager;
 import org.gradle.internal.execution.ExecutionEngine;
 import org.gradle.internal.execution.InputFingerprinter;
@@ -114,6 +109,7 @@ import org.gradle.internal.instantiation.InstantiatorFactory;
 import org.gradle.internal.logging.progress.ProgressLoggerFactory;
 import org.gradle.internal.management.DefaultDependencyResolutionManagement;
 import org.gradle.internal.management.DependencyResolutionManagementInternal;
+import org.gradle.internal.model.BuildTreeObjectFactory;
 import org.gradle.internal.operations.BuildOperationExecutor;
 import org.gradle.internal.operations.BuildOperationRunner;
 import org.gradle.internal.reflect.Instantiator;
@@ -194,11 +190,6 @@ class DependencyManagementBuildScopeServices implements ServiceRegistrationProvi
         public Module getModule() {
             return new AnonymousModule();
         }
-    }
-
-    @Provides
-    ComponentIdentifierFactory createComponentIdentifierFactory(BuildState currentBuild, BuildStateRegistry buildRegistry) {
-        return new DefaultComponentIdentifierFactory(buildRegistry.getBuild(currentBuild.getBuildIdentifier()));
     }
 
     @Provides

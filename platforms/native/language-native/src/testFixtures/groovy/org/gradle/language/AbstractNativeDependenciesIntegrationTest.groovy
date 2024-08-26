@@ -28,9 +28,7 @@ abstract class AbstractNativeDependenciesIntegrationTest extends AbstractInstall
     }
 
     @ToBeFixedForConfigurationCache(bottomSpecs = [
-        'CppUnitTestDependenciesIntegrationTest',
-        'CppApplicationDependenciesIntegrationTest',
-        'CppLibraryDependenciesIntegrationTest',
+        'XCTestDependenciesIntegrationTest'
     ])
     def "can define implementation dependencies on component"() {
         given:
@@ -53,9 +51,7 @@ abstract class AbstractNativeDependenciesIntegrationTest extends AbstractInstall
     }
 
     @ToBeFixedForConfigurationCache(bottomSpecs = [
-        'CppLibraryDependenciesIntegrationTest',
-        'CppApplicationDependenciesIntegrationTest',
-        'CppUnitTestDependenciesIntegrationTest'
+        'XCTestDependenciesIntegrationTest'
     ])
     def "can define implementation dependencies on each binary"() {
         given:

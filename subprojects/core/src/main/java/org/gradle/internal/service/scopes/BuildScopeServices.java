@@ -19,6 +19,7 @@ package org.gradle.internal.service.scopes;
 import org.gradle.StartParameter;
 import org.gradle.api.flow.FlowScope;
 import org.gradle.api.internal.BuildDefinition;
+import org.gradle.api.internal.BuildType;
 import org.gradle.api.internal.ClassPathRegistry;
 import org.gradle.api.internal.DefaultClassPathProvider;
 import org.gradle.api.internal.DefaultClassPathRegistry;
@@ -39,9 +40,12 @@ import org.gradle.api.internal.file.DefaultFileSystemOperations;
 import org.gradle.api.internal.file.FileCollectionFactory;
 import org.gradle.api.internal.file.FileResolver;
 import org.gradle.api.internal.file.temp.TemporaryFileProvider;
+import org.gradle.api.internal.initialization.ActionBasedModelDefaultsHandler;
 import org.gradle.api.internal.initialization.BuildLogicBuildQueue;
 import org.gradle.api.internal.initialization.BuildLogicBuilder;
+import org.gradle.api.initialization.SharedModelDefaults;
 import org.gradle.api.internal.initialization.DefaultBuildLogicBuilder;
+import org.gradle.api.internal.initialization.DefaultSharedModelDefaults;
 import org.gradle.api.internal.initialization.DefaultScriptClassPathResolver;
 import org.gradle.api.internal.initialization.DefaultScriptHandlerFactory;
 import org.gradle.api.internal.initialization.ScriptClassPathResolver;
@@ -173,6 +177,7 @@ import org.gradle.internal.buildtree.BuildModelParameters;
 import org.gradle.internal.classloader.ClassLoaderFactory;
 import org.gradle.internal.classpath.CachedClasspathTransformer;
 import org.gradle.internal.classpath.transforms.ClasspathElementTransformFactoryForLegacy;
+import org.gradle.internal.classpath.types.GradleCoreInstrumentationTypeRegistry;
 import org.gradle.internal.cleanup.DefaultBuildOutputCleanupRegistry;
 import org.gradle.internal.code.UserCodeApplicationContext;
 import org.gradle.internal.composite.DefaultBuildIncluder;
@@ -187,6 +192,7 @@ import org.gradle.internal.file.RelativeFilePathResolver;
 import org.gradle.internal.file.Stat;
 import org.gradle.internal.hash.ClassLoaderHierarchyHasher;
 import org.gradle.internal.instantiation.InstantiatorFactory;
+import org.gradle.internal.instrumentation.reporting.PropertyUpgradeReportConfig;
 import org.gradle.internal.invocation.DefaultBuildInvocationDetails;
 import org.gradle.internal.isolation.IsolatableFactory;
 import org.gradle.internal.jvm.JavaModuleDetector;
@@ -212,6 +218,9 @@ import org.gradle.internal.service.ServiceRegistry;
 import org.gradle.internal.snapshot.CaseSensitivity;
 import org.gradle.model.internal.inspect.ModelRuleSourceDetector;
 import org.gradle.plugin.management.internal.autoapply.AutoAppliedPluginHandler;
+import org.gradle.plugin.software.internal.PluginScheme;
+import org.gradle.plugin.software.internal.ModelDefaultsHandler;
+import org.gradle.plugin.software.internal.SoftwareTypeRegistry;
 import org.gradle.plugin.use.internal.PluginRequestApplicator;
 import org.gradle.process.internal.DefaultExecOperations;
 import org.gradle.process.internal.DefaultExecSpecFactory;
@@ -502,7 +511,9 @@ public class BuildScopeServices implements ServiceRegistrationProvider {
         FileCollectionFactory fileCollectionFactory,
         InputFingerprinter inputFingerprinter,
         GroovyDslWorkspaceProvider groovyDslWorkspaceProvider,
-        ClasspathElementTransformFactoryForLegacy transformFactoryForLegacy
+        ClasspathElementTransformFactoryForLegacy transformFactoryForLegacy,
+        GradleCoreInstrumentationTypeRegistry gradleCoreTypeRegistry,
+        PropertyUpgradeReportConfig propertyUpgradeReportConfig
     ) {
         return new GroovyScriptClassCompiler(
             new BuildOperationBackedScriptCompilationHandler(scriptCompilationHandler, buildOperationRunner),
@@ -512,7 +523,9 @@ public class BuildScopeServices implements ServiceRegistrationProvider {
             fileCollectionFactory,
             inputFingerprinter,
             groovyDslWorkspaceProvider.getWorkspace(),
-            transformFactoryForLegacy
+            transformFactoryForLegacy,
+            gradleCoreTypeRegistry,
+            propertyUpgradeReportConfig
         );
     }
 
@@ -634,12 +647,14 @@ public class BuildScopeServices implements ServiceRegistrationProvider {
         BuildInclusionCoordinator inclusionCoordinator,
         BuildLoader buildLoader,
         BuildOperationRunner buildOperationRunner,
-        BuildModelParameters buildModelParameters
+        BuildModelParameters buildModelParameters,
+        BuildType buildType
     ) {
         return new BuildOperationFiringProjectsPreparer(
             new BuildTreePreparingProjectsPreparer(
                 new DefaultProjectsPreparer(
                     projectConfigurer,
+                    buildType,
                     buildModelParameters,
                     buildOperationRunner),
                 buildLoader,
@@ -780,5 +795,15 @@ public class BuildScopeServices implements ServiceRegistrationProvider {
                 ? new BuildServiceProviderNagger(services.get(WorkExecutionTracker.class))
                 : BuildServiceProvider.Listener.EMPTY
         );
+    }
+
+    @Provides
+    protected SharedModelDefaults createSharedModelDefaults(Instantiator instantiator, SoftwareTypeRegistry softwareTypeRegistry) {
+        return instantiator.newInstance(DefaultSharedModelDefaults.class, softwareTypeRegistry);
+    }
+
+    @Provides
+    protected ModelDefaultsHandler createActionDefaultsHandler(SoftwareTypeRegistry softwareTypeRegistry, PluginScheme pluginScheme) {
+        return new ActionBasedModelDefaultsHandler(softwareTypeRegistry, pluginScheme.getInspectionScheme());
     }
 }

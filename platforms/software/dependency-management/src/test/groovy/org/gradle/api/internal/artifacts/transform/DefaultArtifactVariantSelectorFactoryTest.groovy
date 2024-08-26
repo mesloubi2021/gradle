@@ -24,14 +24,12 @@ import org.gradle.api.internal.artifacts.ivyservice.resolveengine.artifact.Resol
 import org.gradle.api.internal.artifacts.ivyservice.resolveengine.artifact.ResolvedVariantSet
 import org.gradle.api.internal.attributes.AttributeContainerInternal
 import org.gradle.api.internal.attributes.AttributesSchemaInternal
-import org.gradle.api.internal.attributes.DefaultMutableAttributeContainer
 import org.gradle.api.internal.attributes.ImmutableAttributes
 import org.gradle.api.problems.internal.InternalProblems
 import org.gradle.internal.Describables
-
-import org.gradle.internal.component.resolution.failure.ResolutionFailureHandler
 import org.gradle.internal.component.model.AttributeMatcher
 import org.gradle.internal.component.model.AttributeMatchingExplanationBuilder
+import org.gradle.internal.component.resolution.failure.ResolutionFailureHandler
 import org.gradle.internal.component.resolution.failure.exception.ArtifactSelectionException
 import org.gradle.util.AttributeTestUtil
 import spock.lang.Specification
@@ -59,7 +57,7 @@ class DefaultArtifactVariantSelectorFactoryTest extends Specification {
         def variant2 = resolvedVariant()
         def variant1Artifacts = Stub(ResolvedArtifactSet)
         def set = resolvedVariantSet()
-        def variants = [variant1, variant2] as Set
+        def variants = [variant1, variant2]
 
         given:
         set.schema >> producerSchema
@@ -69,7 +67,7 @@ class DefaultArtifactVariantSelectorFactoryTest extends Specification {
         variant2.attributes >> typeAttributes("jar")
 
         consumerSchema.withProducer(producerSchema) >> attributeMatcher
-        attributeMatcher.matches(_ as Collection, typeAttributes("classes"), _ as AttributeMatchingExplanationBuilder) >> [variant1]
+        attributeMatcher.matchMultipleCandidates(_ as Collection, typeAttributes("classes"), _ as AttributeMatchingExplanationBuilder) >> [variant1]
 
         expect:
         def result = variantSelectorFactory.create(dependenciesResolverFactory).select(set, typeAttributes("classes"), false, factory)
@@ -80,7 +78,7 @@ class DefaultArtifactVariantSelectorFactoryTest extends Specification {
         def variant1 = resolvedVariant()
         def variant2 = resolvedVariant()
         def set = resolvedVariantSet()
-        def variants = [variant1, variant2] as Set
+        def variants = [variant1, variant2]
 
         given:
         set.asDescribable() >> Describables.of('<component>')
@@ -92,8 +90,8 @@ class DefaultArtifactVariantSelectorFactoryTest extends Specification {
         variant2.attributes >> typeAttributes("jar")
 
         consumerSchema.withProducer(producerSchema) >> attributeMatcher
-        attributeMatcher.matches(_ as Collection, typeAttributes("classes"), _ as AttributeMatchingExplanationBuilder) >> [variant1, variant2]
-        attributeMatcher.isMatching(_, _, _) >> true
+        attributeMatcher.matchMultipleCandidates(_ as Collection, typeAttributes("classes"), _ as AttributeMatchingExplanationBuilder) >> [variant1, variant2]
+        attributeMatcher.isMatchingValue(_, _, _) >> true
 
         when:
         def result = variantSelectorFactory.create(dependenciesResolverFactory).select(set, typeAttributes("classes"), false, factory)
@@ -111,7 +109,7 @@ class DefaultArtifactVariantSelectorFactoryTest extends Specification {
         def variant1 = resolvedVariant()
         def variant2 = resolvedVariant()
         def set = resolvedVariantSet()
-        def variants = [variant1, variant2] as Set
+        def variants = [variant1, variant2]
         def transformedVariants = variants.collect { transformedVariant(it, requested)}
 
         given:
@@ -124,8 +122,8 @@ class DefaultArtifactVariantSelectorFactoryTest extends Specification {
         variant2.asDescribable() >> Describables.of('<variant2>')
 
         consumerSchema.withProducer(producerSchema) >> attributeMatcher
-        attributeMatcher.matches(ImmutableList.copyOf(variants), _, _) >> []
-        attributeMatcher.matches(transformedVariants, _, _) >> transformedVariants
+        attributeMatcher.matchMultipleCandidates(ImmutableList.copyOf(variants), _, _) >> []
+        attributeMatcher.matchMultipleCandidates(transformedVariants, _, _) >> transformedVariants
         matchingCache.findTransformedVariants(_, _) >> transformedVariants
 
         def selector = variantSelectorFactory.create(dependenciesResolverFactory)
@@ -153,7 +151,7 @@ Found the following transforms:
         def variant1 = resolvedVariant()
         def variant2 = resolvedVariant()
         def set = resolvedVariantSet()
-        def variants = [variant1, variant2] as Set
+        def variants = [variant1, variant2]
 
         given:
         set.schema >> producerSchema
@@ -162,7 +160,7 @@ Found the following transforms:
         variant2.attributes >> typeAttributes("classes")
 
         consumerSchema.withProducer(producerSchema) >> attributeMatcher
-        attributeMatcher.matches(_, _, _) >> []
+        attributeMatcher.matchMultipleCandidates(_, _, _) >> []
 
         matchingCache.findTransformedVariants(_, _) >> []
 
@@ -175,7 +173,7 @@ Found the following transforms:
         def variant1 = resolvedVariant()
         def variant2 = resolvedVariant()
         def set = resolvedVariantSet()
-        def variants = [variant1, variant2] as Set
+        def variants = [variant1, variant2]
 
         given:
         set.schema >> producerSchema
@@ -187,7 +185,7 @@ Found the following transforms:
         variant2.asDescribable() >> Describables.of('<variant2>')
 
         consumerSchema.withProducer(producerSchema) >> attributeMatcher
-        attributeMatcher.matches(_, _, _) >> []
+        attributeMatcher.matchMultipleCandidates(_, _, _) >> []
 
         matchingCache.findTransformedVariants(_, _) >> []
 
@@ -222,8 +220,8 @@ Found the following transforms:
         set.visit(visitor)
     }
 
-    private static AttributeContainerInternal typeAttributes(String artifactType) {
-        def attributeContainer = new DefaultMutableAttributeContainer(AttributeTestUtil.attributesFactory())
+    private static ImmutableAttributes typeAttributes(String artifactType) {
+        def attributeContainer = AttributeTestUtil.attributesFactory().mutable()
         attributeContainer.attribute(ARTIFACT_TYPE_ATTRIBUTE, artifactType)
         attributeContainer.asImmutable()
     }

@@ -1,5 +1,6 @@
 plugins {
     id("gradlebuild.distribution.api-java")
+    id("gradlebuild.instrumented-java-project")
 }
 
 description = """Extends platform-base with base types and interfaces specific to the Java Virtual Machine, including tasks for obtaining a JDK via toolchains, and for compiling and launching Java applications."""
@@ -7,7 +8,6 @@ description = """Extends platform-base with base types and interfaces specific t
 errorprone {
     disabledChecks.addAll(
         "StringCharset", // 1 occurrences
-        "UnusedMethod", // 1 occurrences
     )
 }
 
@@ -25,9 +25,7 @@ dependencies {
     api(libs.groovy)
     api(libs.inject)
     api(libs.jsr305)
-    api(libs.nativePlatform)
 
-    implementation(projects.internalInstrumentationApi)
     implementation(projects.dependencyManagement)
     implementation(projects.execution)
     implementation(projects.functional)
@@ -62,3 +60,6 @@ strictCompile {
 }
 
 integTest.usesJavadocCodeSnippets = true
+tasks.isolatedProjectsIntegTest {
+    enabled = false
+}

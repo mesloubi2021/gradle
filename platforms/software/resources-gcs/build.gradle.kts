@@ -6,7 +6,6 @@ description = "Implementation for interacting with Google Cloud Storage (GCS) re
 
 errorprone {
     disabledChecks.addAll(
-        "StringCaseLocaleUsage", // 1 occurrences
         "UnusedMethod", // 1 occurrences
     )
 }
@@ -49,4 +48,7 @@ dependencies {
 
 strictCompile {
     ignoreDeprecations()
+}
+tasks.isolatedProjectsIntegTest {
+    enabled = false
 }

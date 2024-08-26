@@ -19,6 +19,7 @@ package org.gradle
 import org.gradle.integtests.fixtures.AbstractIntegrationSpec
 import org.gradle.integtests.fixtures.daemon.DaemonLogsAnalyzer
 import org.gradle.internal.nativeintegration.jansi.JansiStorageLocator
+import org.gradle.test.fixtures.file.LeaksFileHandles
 import org.gradle.test.fixtures.file.TestNameTestDirectoryProvider
 import org.gradle.test.precondition.Requires
 import org.gradle.test.preconditions.IntegTestPreconditions
@@ -57,6 +58,7 @@ class NativeServicesIntegrationTest extends AbstractIntegrationSpec {
     }
 
     @ToBeImplemented("https://github.com/gradle/gradle/issues/28203")
+    @LeaksFileHandles
     def "native services are #description with systemProperties == #systemProperties"() {
         given:
         // We set Gradle User Home to a different temporary directory that is outside
@@ -103,7 +105,7 @@ class NativeServicesIntegrationTest extends AbstractIntegrationSpec {
     def "native services flag should be passed to the daemon and to the worker"() {
         given:
         executer.withArguments(systemProperties.collect { it.toString() })
-        buildScript("""
+        buildFile("""
             import org.gradle.workers.WorkParameters
             import org.gradle.internal.nativeintegration.services.NativeServices
             import org.gradle.internal.nativeintegration.NativeCapabilities
@@ -148,7 +150,7 @@ class NativeServicesIntegrationTest extends AbstractIntegrationSpec {
     def "native services are not initialized inside a test executor but should be initialized for a build inside the executor"() {
         given:
         def nativeDirOverride = normaliseFileSeparators(new File(tmpDir.testDirectory, 'native-libs-for-test-executor').absolutePath)
-        buildScript("""
+        buildFile("""
             plugins {
                 id("java-gradle-plugin")
                 id("groovy")

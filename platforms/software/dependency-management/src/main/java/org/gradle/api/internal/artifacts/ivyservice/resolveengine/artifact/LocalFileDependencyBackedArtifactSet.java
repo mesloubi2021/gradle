@@ -29,7 +29,6 @@ import org.gradle.api.internal.artifacts.transform.TransformedArtifactSet;
 import org.gradle.api.internal.artifacts.transform.TransformedVariantFactory;
 import org.gradle.api.internal.artifacts.transform.VariantDefinition;
 import org.gradle.api.internal.artifacts.type.ArtifactTypeRegistry;
-import org.gradle.api.internal.attributes.AttributeContainerInternal;
 import org.gradle.api.internal.attributes.AttributesSchemaInternal;
 import org.gradle.api.internal.attributes.EmptySchema;
 import org.gradle.api.internal.attributes.ImmutableAttributes;
@@ -52,6 +51,7 @@ import org.gradle.internal.operations.RunnableBuildOperation;
 import javax.annotation.Nonnull;
 import java.io.File;
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -233,8 +233,8 @@ public abstract class LocalFileDependencyBackedArtifactSet implements Transforme
         }
 
         @Override
-        public Set<ResolvedVariant> getVariants() {
-            return Collections.singleton(this);
+        public List<ResolvedVariant> getVariants() {
+            return Collections.singletonList(this);
         }
 
         @Override
@@ -280,7 +280,7 @@ public abstract class LocalFileDependencyBackedArtifactSet implements Transforme
         }
 
         @Override
-        public AttributeContainerInternal getAttributes() {
+        public ImmutableAttributes getAttributes() {
             return variantAttributes;
         }
 

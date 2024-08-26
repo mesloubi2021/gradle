@@ -76,7 +76,7 @@ public class JdkJavaCompiler implements Compiler<JavaCompileSpec>, Serializable 
         boolean success = task.call();
         diagnosticToProblemListener.printDiagnosticCounts();
         if (!success) {
-            throw new CompilationFailedException(result);
+            throw new CompilationFailedException(result, diagnosticToProblemListener.getReportedProblems());
         }
         return result;
     }
@@ -127,9 +127,26 @@ public class JdkJavaCompiler implements Compiler<JavaCompileSpec>, Serializable 
     private void buildProblemFrom(RuntimeException ex, ProblemSpec spec) {
         spec.severity(Severity.ERROR);
         spec.id("initialization-failed", "Java compilation initialization error", GradleCoreProblemGroup.compilation().java());
-        spec.details(ex.getLocalizedMessage());
+        spec.contextualLabel(ex.getLocalizedMessage());
         spec.withException(ex);
     }
 
+    public static boolean canBeUsed() {
+        try {
+            // Our goal is to check if the class is instantiable
+            // Class loading alone doesn't generate an exception
+            new Context();
+        } catch (IllegalAccessError e) {
+            LOGGER.debug("Expected failure when checking class presence: {}", e.getMessage());
+            return false;
+        } catch (Throwable throwable) {
+            // We don't expect any other exception
+            // Regardless, to make this as robust as possible, we handle it
+            LOGGER.debug("Unexpected failure when checking class presence: {}", throwable.getMessage());
+            return false;
+        }
+
+        return true;
+    }
 
 }

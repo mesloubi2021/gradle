@@ -16,7 +16,9 @@
 
 package org.gradle.integtests
 import org.gradle.integtests.fixtures.AbstractIntegrationTest
+import org.gradle.integtests.fixtures.ToBeFixedForIsolatedProjects
 import org.gradle.integtests.fixtures.executer.ExecutionFailure
+import org.gradle.test.fixtures.Flaky
 import org.gradle.test.fixtures.file.TestFile
 import org.junit.Test
 
@@ -31,7 +33,7 @@ class JavaProjectIntegrationTest extends AbstractIntegrationTest {
         ExecutionFailure failure = executer.withTasks("build").runWithFailure()
 
         failure.assertHasDescription("Execution failed for task ':compileJava'.")
-        failure.assertHasCause("Compilation failed; see the compiler error output for details.")
+        failure.assertHasCause("Compilation failed; see the compiler output below.")
     }
 
     @Test
@@ -44,7 +46,7 @@ class JavaProjectIntegrationTest extends AbstractIntegrationTest {
         ExecutionFailure failure = executer.withTasks("build").runWithFailure()
 
         failure.assertHasDescription("Execution failed for task ':compileTestJava'.")
-        failure.assertHasCause("Compilation failed; see the compiler error output for details.")
+        failure.assertHasCause("Compilation failed; see the compiler output below.")
     }
 
     @Test
@@ -172,6 +174,8 @@ class JavaProjectIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @ToBeFixedForIsolatedProjects(because = "allprojects, configure projects from root")
+    @Flaky(because = "https://github.com/gradle/gradle-private/issues/4442")
     void "can recursively build dependent and dependee projects"() {
         createDirs("a", "b", "c")
         testFile("settings.gradle") << "include 'a', 'b', 'c'"
@@ -245,6 +249,8 @@ class JavaProjectIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @ToBeFixedForIsolatedProjects(because = "allprojects, configure projects from root")
+    @Flaky(because = "https://github.com/gradle/gradle-private/issues/4442")
     void "project dependency does not drag in source jar from target project"() {
         createDirs("a", "b")
         testFile("settings.gradle") << "include 'a', 'b'"

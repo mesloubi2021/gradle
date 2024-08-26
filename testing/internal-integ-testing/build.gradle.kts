@@ -95,7 +95,6 @@ dependencies {
     implementation(projects.io)
     implementation(projects.messaging)
     implementation(projects.modelCore)
-    implementation(projects.platformJvm)
     implementation(projects.serialization)
     implementation(projects.serviceProvider)
     implementation(projects.serviceRegistryBuilder)
@@ -179,8 +178,8 @@ val prepareVersionsInfo = tasks.register<PrepareVersionsInfo>("prepareVersionsIn
 }
 
 val copyTestedVersionsInfo by tasks.registering(Copy::class) {
-    from(rootProject.layout.projectDirectory.file("gradle/dependency-management/agp-versions.properties"))
-    from(rootProject.layout.projectDirectory.file("gradle/dependency-management/kotlin-versions.properties"))
+    from(isolated.rootProject.projectDirectory.file("gradle/dependency-management/agp-versions.properties"))
+    from(isolated.rootProject.projectDirectory.file("gradle/dependency-management/kotlin-versions.properties"))
     into(layout.buildDirectory.dir("generated-resources/tested-versions"))
 }
 
@@ -219,4 +218,7 @@ abstract class PrepareVersionsInfo : DefaultTask() {
         properties["versions"] = versions.get()
         gradlebuild.basics.util.ReproduciblePropertiesWriter.store(properties, destFile.get().asFile)
     }
+}
+tasks.isolatedProjectsIntegTest {
+    enabled = false
 }
