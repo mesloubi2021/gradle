@@ -16,47 +16,60 @@
 
 package org.gradle.api.problems.internal;
 
-import com.google.common.collect.Multimap;
 import org.gradle.api.Action;
 import org.gradle.api.problems.ProblemSpec;
+import org.gradle.internal.exception.ExceptionAnalyser;
 import org.gradle.internal.operations.CurrentBuildOperationRef;
 import org.gradle.internal.operations.OperationIdentifier;
 import org.gradle.problems.buildtree.ProblemStream;
 
+import javax.annotation.Nonnull;
 import java.util.Collection;
 
 public class DefaultProblemReporter implements InternalProblemReporter {
 
-    private final Collection<ProblemEmitter> emitters;
+    private final ProblemSummarizer problemSummarizer;
     private final ProblemStream problemStream;
     private final CurrentBuildOperationRef currentBuildOperationRef;
-    private final Multimap<Throwable, Problem> problems;
+    private final ExceptionProblemRegistry exceptionProblemRegistry;
+    private final AdditionalDataBuilderFactory additionalDataBuilderFactory;
+    private final ExceptionAnalyser exceptionAnalyser;
 
     public DefaultProblemReporter(
-        Collection<ProblemEmitter> emitters,
+        ProblemSummarizer problemSummarizer,
         ProblemStream problemStream,
         CurrentBuildOperationRef currentBuildOperationRef,
-        Multimap<Throwable, Problem> problems
+        AdditionalDataBuilderFactory additionalDataBuilderFactory,
+        ExceptionProblemRegistry exceptionProblemRegistry,
+        ExceptionAnalyser exceptionAnalyser
     ) {
-        this.emitters = emitters;
+        this.problemSummarizer = problemSummarizer;
         this.problemStream = problemStream;
         this.currentBuildOperationRef = currentBuildOperationRef;
-        this.problems = problems;
+        this.exceptionProblemRegistry = exceptionProblemRegistry;
+        this.additionalDataBuilderFactory = additionalDataBuilderFactory;
+        this.exceptionAnalyser = exceptionAnalyser;
     }
 
     @Override
     public void reporting(Action<ProblemSpec> spec) {
-        DefaultProblemBuilder problemBuilder = new DefaultProblemBuilder(problemStream);
+        DefaultProblemBuilder problemBuilder = createProblemBuilder();
         spec.execute(problemBuilder);
         report(problemBuilder.build());
     }
 
+    @Nonnull
+    private DefaultProblemBuilder createProblemBuilder() {
+        return new DefaultProblemBuilder(problemStream, additionalDataBuilderFactory);
+    }
+
     @Override
     public RuntimeException throwing(Action<ProblemSpec> spec) {
-        DefaultProblemBuilder problemBuilder = new DefaultProblemBuilder(problemStream);
+        DefaultProblemBuilder problemBuilder = createProblemBuilder();
         spec.execute(problemBuilder);
+
         Problem problem = problemBuilder.build();
-        RuntimeException exception = problem.getException();
+        Throwable exception = problem.getException();
         if (exception == null) {
             throw new IllegalStateException("Exception must be non-null");
         } else {
@@ -64,23 +77,30 @@ public class DefaultProblemReporter implements InternalProblemReporter {
         }
     }
 
-    private RuntimeException throwError(RuntimeException exception, Problem problem) {
-        report(problem);
-        problems.put(exception, problem);
-        throw exception;
+    @Override
+    public RuntimeException throwing(Throwable exception, Collection<? extends Problem> problems) {
+        for (Problem problem : problems) {
+            report(problem.toBuilder(additionalDataBuilderFactory).withException(transform(exception)).build());
+        }
+        if (exception instanceof RuntimeException) {
+            return (RuntimeException) exception;
+        } else {
+            throw new RuntimeException(exception);
+        }
     }
 
-    @Override
-    public RuntimeException rethrowing(RuntimeException e, Action<ProblemSpec> spec) {
-        DefaultProblemBuilder problemBuilder = new DefaultProblemBuilder(problemStream);
-        spec.execute(problemBuilder);
-        problemBuilder.withException(e);
-        throw throwError(e, problemBuilder.build());
+    private RuntimeException throwError(Throwable exception, Problem problem) {
+        report(problem);
+        if (exception instanceof RuntimeException) {
+            return (RuntimeException) exception;
+        } else {
+            throw new RuntimeException(exception);
+        }
     }
 
     @Override
     public Problem create(Action<InternalProblemSpec> action) {
-        DefaultProblemBuilder defaultProblemBuilder = new DefaultProblemBuilder(problemStream);
+        DefaultProblemBuilder defaultProblemBuilder = createProblemBuilder();
         action.execute(defaultProblemBuilder);
         return defaultProblemBuilder.build();
     }
@@ -95,13 +115,16 @@ public class DefaultProblemReporter implements InternalProblemReporter {
      */
     @Override
     public void report(Problem problem) {
-        RuntimeException exception = problem.getException();
-        if(exception != null) {
-            problems.put(exception, problem);
-        }
         OperationIdentifier id = currentBuildOperationRef.getId();
         if (id != null) {
             report(problem, id);
+        }
+    }
+
+    @Override
+    public void report(Collection<? extends Problem> problems) {
+        for (Problem problem : problems) {
+            report(problem);
         }
     }
 
@@ -116,9 +139,23 @@ public class DefaultProblemReporter implements InternalProblemReporter {
      */
     @Override
     public void report(Problem problem, OperationIdentifier id) {
-        // TODO (reinhold) Reconsider using the Emitter interface here. Maybe it should be a replaced with a future problem listener feature.
-        for (ProblemEmitter emitter : emitters) {
-            emitter.emit(problem, id);
+        String taskPath = ProblemTaskPathTracker.getTaskIdentityPath();
+        problem = taskPath == null ? problem : problem.toBuilder(additionalDataBuilderFactory).taskPathLocation(taskPath).build();
+        Throwable exception = problem.getException();
+        if (exception != null) {
+            exceptionProblemRegistry.onProblem(transform(exception), problem);
+        }
+        problemSummarizer.emit(problem, id);
+    }
+
+    private Throwable transform(Throwable failure) {
+        if (exceptionAnalyser == null) {
+            return failure;
+        }
+        try {
+            return exceptionAnalyser.transform(failure).getCause();
+        } catch (Throwable e) {
+            throw new RuntimeException(e);
         }
     }
 }

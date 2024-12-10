@@ -90,6 +90,15 @@ class JavaExecWithLongCommandLineIntegrationTest extends AbstractIntegrationSpec
         """
 
         when:
+        if (method == 'project.javaexec') {
+            executer.expectDocumentedDeprecationWarning("The Project.javaexec(Closure) method has been deprecated. " +
+                "This is scheduled to be removed in Gradle 9.0. " +
+                "Use ExecOperations.javaexec(Action) or ProviderFactory.javaexec(Action) instead. " +
+                "Consult the upgrading guide for further information: https://docs.gradle.org/current/userguide/upgrading_version_8.html#deprecated_project_exec")
+            executer.expectDocumentedDeprecationWarning("Invocation of Task.project at execution time has been deprecated. "+
+                "This will fail with an error in Gradle 9.0. " +
+                "Consult the upgrading guide for further information: https://docs.gradle.org/current/userguide/upgrading_version_7.html#task_project")
+        }
         fails taskName
 
         then:
@@ -106,10 +115,19 @@ class JavaExecWithLongCommandLineIntegrationTest extends AbstractIntegrationSpec
     def "does not suggest long command line failures when execution fails with #method"() {
         buildFile << """
             extraClasspath.from('${veryLongFileNames.join("','")}')
-            run.executable 'does-not-exist'
+            run.executable = 'does-not-exist'
         """
 
         when:
+        if (method == 'project.javaexec') {
+            executer.expectDocumentedDeprecationWarning("The Project.javaexec(Closure) method has been deprecated. " +
+                "This is scheduled to be removed in Gradle 9.0. " +
+                "Use ExecOperations.javaexec(Action) or ProviderFactory.javaexec(Action) instead. " +
+                "Consult the upgrading guide for further information: https://docs.gradle.org/current/userguide/upgrading_version_8.html#deprecated_project_exec")
+            executer.expectDocumentedDeprecationWarning("Invocation of Task.project at execution time has been deprecated. "+
+                "This will fail with an error in Gradle 9.0. " +
+                "Consult the upgrading guide for further information: https://docs.gradle.org/current/userguide/upgrading_version_7.html#task_project")
+        }
         fails taskName
 
         then:
@@ -128,10 +146,19 @@ class JavaExecWithLongCommandLineIntegrationTest extends AbstractIntegrationSpec
     @UnsupportedWithConfigurationCache(iterationMatchers = ".* project.javaexec")
     def "does not suggest long command line failures when execution fails for short command line with #method"() {
         buildFile << """
-            run.executable 'does-not-exist'
+            run.executable = 'does-not-exist'
         """
 
         when:
+        if (method == 'project.javaexec') {
+            executer.expectDocumentedDeprecationWarning("The Project.javaexec(Closure) method has been deprecated. " +
+                "This is scheduled to be removed in Gradle 9.0. " +
+                "Use ExecOperations.javaexec(Action) or ProviderFactory.javaexec(Action) instead. " +
+                "Consult the upgrading guide for further information: https://docs.gradle.org/current/userguide/upgrading_version_8.html#deprecated_project_exec")
+            executer.expectDocumentedDeprecationWarning("Invocation of Task.project at execution time has been deprecated. "+
+                "This will fail with an error in Gradle 9.0. " +
+                "Consult the upgrading guide for further information: https://docs.gradle.org/current/userguide/upgrading_version_7.html#task_project")
+        }
         fails taskName
 
         then:
@@ -159,6 +186,15 @@ class JavaExecWithLongCommandLineIntegrationTest extends AbstractIntegrationSpec
         """
 
         when:
+        if (method == 'project.javaexec') {
+            executer.expectDocumentedDeprecationWarning("The Project.javaexec(Closure) method has been deprecated. " +
+                "This is scheduled to be removed in Gradle 9.0. " +
+                "Use ExecOperations.javaexec(Action) or ProviderFactory.javaexec(Action) instead. " +
+                "Consult the upgrading guide for further information: https://docs.gradle.org/current/userguide/upgrading_version_8.html#deprecated_project_exec")
+            executer.expectDocumentedDeprecationWarning("Invocation of Task.project at execution time has been deprecated. "+
+                "This will fail with an error in Gradle 9.0. " +
+                "Consult the upgrading guide for further information: https://docs.gradle.org/current/userguide/upgrading_version_7.html#task_project")
+        }
         succeeds taskName, "-i"
 
         then:

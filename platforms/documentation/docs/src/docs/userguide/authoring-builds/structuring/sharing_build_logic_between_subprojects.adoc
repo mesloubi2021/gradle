@@ -1,4 +1,4 @@
-// Copyright (C) 2023 Gradle, Inc.
+// Copyright (C) 2024 Gradle, Inc.
 //
 // Licensed under the Creative Commons Attribution-Noncommercial-ShareAlike 4.0 International License.;
 // you may not use this file except in compliance with the License.
@@ -210,7 +210,7 @@ class MyCustomTask extends DefaultTask {
 The `MyCustomTask` task is used in the build script of the `api` and `shared` projects.
 The task is automatically available because it's part of `buildSrc`.
 
-The `shared.build(.kts)` file is also applied:
+The `shared.gradle(.kts)` file is also applied:
 
 [.multi-language-sample]
 =====
@@ -220,7 +220,7 @@ The `shared.build(.kts)` file is also applied:
 // Apply any other configurations specific to your project
 
 // Use the build script defined in buildSrc
-apply(from = rootProject.file("buildSrc/shared.gradle"))
+apply(from = rootProject.file("buildSrc/shared.gradle.kts"))
 
 // Use the custom task defined in buildSrc
 tasks.register<MyCustomTask>("myCustomTask")
@@ -241,7 +241,7 @@ tasks.register('myCustomTask', MyCustomTask)
 ----
 =====
 
-[[sec:convention_plugins]]
+[[sec:sharing_logic_via_convention_plugins]]
 == Share logic using convention plugins
 
 Gradle's recommended way of organizing build logic is to use its plugin system.
@@ -362,4 +362,4 @@ The two most common uses of cross-configuration can be better modeled using conv
 Often, the cross-configuration logic is `if subproject is of type X, then configure Y`.
 This is equivalent to applying `X-conventions` plugin directly to a subproject.
 2. Extracting information from subprojects of a certain type. +
-This use case can be modeled using <<cross_project_publications.adoc#sec:simple-sharing-artifacts-between-projects,outgoing configuration variants>>.
+This use case can be modeled using <<variant_model.adoc#sec:variant-aware-matching,outgoing configuration variants>>.

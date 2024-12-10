@@ -52,15 +52,26 @@ public interface Problem {
     String getDetails();
 
     /**
-     * Return the location data associated available for this problem.
+     * Returns the locations where the problem originated.
+     * <p>
+     * Might be empty if the origin is not known.
      */
-    List<ProblemLocation> getLocations();
+    List<ProblemLocation> getOriginLocations();
+
+    /**
+     * Returns additional locations, which can help to understand the problem further.
+     * <p>
+     * For example, if a problem was emitted during task execution, the task path will be available in this list.
+     * <p>
+     * Might be empty if there is no meaningful contextual information.
+     */
+    List<ProblemLocation> getContextualLocations();
 
     /**
      * The exception that caused the problem.
      */
     @Nullable
-    RuntimeException getException();
+    Throwable getException();
 
     /**
      * Additional data attached to the problem.
@@ -73,5 +84,5 @@ public interface Problem {
     /**
      * Returns a problem builder with fields initialized with values from this instance.
      */
-    InternalProblemBuilder toBuilder();
+    InternalProblemBuilder toBuilder(AdditionalDataBuilderFactory additionalDataBuilderFactory);
 }

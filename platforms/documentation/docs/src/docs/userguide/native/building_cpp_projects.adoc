@@ -1,4 +1,4 @@
-// Copyright (C) 2023 Gradle, Inc.
+// Copyright (C) 2024 Gradle, Inc.
 //
 // Licensed under the Creative Commons Attribution-Noncommercial-ShareAlike 4.0 International License.;
 // you may not use this file except in compliance with the License.
@@ -14,8 +14,6 @@
 
 [[building_cpp_projects]]
 = Building {cpp} projects
-
-WARNING: The plugins described in this chapter are not compatible with the <<configuration_cache.adoc#config_cache:plugins:core,configuration cache>>.
 
 Gradle uses a convention-over-configuration approach to building native projects.
 If you are coming from another native build system, these concepts may be unfamiliar at first, but they serve a purpose to simplify build script authoring.
@@ -83,7 +81,7 @@ Test sources are configured on each test suite script block. See <<cpp_testing.a
 
 The vast majority of projects rely on other projects, so managing your project's dependencies is an important part of building any project.
 Dependency management is a big topic, so we will only focus on the basics for {cpp} projects here.
-If you’d like to dive into the details, check out the <<core_dependency_management.adoc#dependency_management_in_gradle,introduction to dependency management>>.
+If you’d like to dive into the details, check out the <<getting_started_dep_man.adoc#dependency-management-in-gradle,introduction to dependency management>>.
 
 Gradle provides support for consuming pre-built binaries from Maven repositories published by Gradle footnote:[Unfortunately, Conan and Nuget repositories aren’t yet supported as core features].
 
@@ -121,21 +119,21 @@ You can learn more about these and how they relate to one another in the <<plugi
 
 Be aware that the <<cpp_library_plugin.adoc#cpp_library_plugin,{cpp} Library Plugin>> creates an additional configuration — `api` — for dependencies that are required for compiling and linking both the module and any modules that depend on it.
 
-We have only scratched the surface here, so we recommend that you read the <<core_dependency_management.adoc#dependency_management_in_gradle,dedicated dependency management chapters>> once you’re comfortable with the basics of building {cpp} projects with Gradle.
+We have only scratched the surface here, so we recommend that you read the <<getting_started_dep_man.adoc#dependency-management-in-gradle,dedicated dependency management chapters>> once you’re comfortable with the basics of building {cpp} projects with Gradle.
 
 Some common scenarios that require further reading include:
 
- * Defining a custom <<declaring_repositories_adv.adoc#sec:maven_repo,Maven-compatible>> repository
- * Declaring dependencies with <<dynamic_versions.adoc#sub:declaring_dependency_with_changing_version,changing>> (e.g. SNAPSHOT) and <<dynamic_versions.adoc#sub:declaring_dependency_with_dynamic_version,dynamic>> (range) versions
- * Declaring a sibling <<declaring_dependencies_adv.adoc#sub:project_dependencies,project as a dependency>>
+ * Defining a custom <<supported_repository_types.adoc#sec:maven-repo,Maven-compatible>> repository
+ * Declaring dependencies with <<dependency_versions.adoc#sec:declaring-dependency-with-changing-version,changing>> (e.g. SNAPSHOT) and <<dependency_versions.adoc#sec:declaring-dependency-with-dynamic-version,dynamic>> (range) versions
+ * Declaring a sibling <<declaring_dependencies_basics.adoc#sec:project-dependencies,project as a dependency>>
  * <<dependency_constraints.adoc#dependency-constraints,Controlling transitive dependencies and their versions>>
- * Testing your fixes to 3rd-party dependency via <<composite_builds.adoc#composite_builds,composite builds>> (a better alternative to publishing to and consuming from <<declaring_repositories_adv.adoc#sub:maven_local,Maven Local>>)
+ * Testing your fixes to 3rd-party dependency via <<composite_builds.adoc#composite_builds,composite builds>> (a better alternative to publishing to and consuming from <<supported_repository_types.adoc#sec:maven-local,Maven Local>>)
 
 You’ll discover that Gradle has a rich API for working with dependencies — one that takes time to master, but is straightforward to use for common scenarios.
 
 [[sec:cpp_compile_link]]
 == Compiling and linking your code
-Compiling both your code can be trivially easy if you follow the conventions:
+Compiling your code can be trivially easy if you follow the conventions:
 
 1. Put your source code under the _src/main/cpp_ directory
 2. Declare your compile dependencies in the `implementation` configurations (see the previous section)
@@ -152,7 +150,7 @@ NOTE: All link:{groovyDslPath}/org.gradle.language.cpp.tasks.CppCompile.html[Cpp
 
 Gradle offers the ability to execute the same build using different tool chains.
 When you build a native binary, Gradle will attempt to locate a tool chain installed on your machine that can build the binary.
-Gradle select the first tool chain that can build for the target operating system and architecture.
+Gradle selects the first tool chain that can build for the target operating system and architecture.
 In the future, Gradle will consider source and ABI compatibility when selecting a tool chain.
 
 Gradle has general support for the three major tool chains on major operating system: Clang footnote:[Installed with Xcode on macOS], GCC footnote:[Installed through Cygwin and MinGW for 32- and 64-bits architecture on Windows] and Visual {cpp} footnote:[Installed with Visual Studio 2010 to 2019] (Windows-only).

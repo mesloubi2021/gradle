@@ -45,7 +45,7 @@ class IsolatedProjectsToolingApiCoupledProjectsIntegrationTest extends AbstractI
         """
 
         when:
-        executer.withArguments(ENABLE_CLI, WARN_PROBLEMS_CLI_OPT)
+        withIsolatedProjects(WARN_PROBLEMS_CLI_OPT)
         def model = runBuildAction(new FetchCustomModelForEachProject())
 
         then:
@@ -55,7 +55,7 @@ class IsolatedProjectsToolingApiCoupledProjectsIntegrationTest extends AbstractI
         model[2].message == "It works from project :c"
 
         and:
-        fixture.assertStateStoredWithProblems {
+        fixture.assertModelStoredWithProblems {
             projectConfigured(":buildSrc")
             projectsConfigured(":")
             buildModelCreated()
@@ -65,7 +65,7 @@ class IsolatedProjectsToolingApiCoupledProjectsIntegrationTest extends AbstractI
         }
 
         when:
-        executer.withArguments(ENABLE_CLI)
+        withIsolatedProjects()
         def model2 = runBuildAction(new FetchCustomModelForEachProject())
 
         then:
@@ -75,7 +75,7 @@ class IsolatedProjectsToolingApiCoupledProjectsIntegrationTest extends AbstractI
         model2[2].message == "It works from project :c"
 
         and:
-        fixture.assertStateLoaded()
+        fixture.assertModelLoaded()
 
         when:
         file("build.gradle") << """
@@ -85,7 +85,7 @@ class IsolatedProjectsToolingApiCoupledProjectsIntegrationTest extends AbstractI
                 }
             }
         """
-        executer.withArguments(ENABLE_CLI, WARN_PROBLEMS_CLI_OPT)
+        withIsolatedProjects(WARN_PROBLEMS_CLI_OPT)
         def model3 = runBuildAction(new FetchCustomModelForEachProject())
 
         then:
@@ -95,7 +95,7 @@ class IsolatedProjectsToolingApiCoupledProjectsIntegrationTest extends AbstractI
         model3[2].message == "It works from project :c"
 
         and:
-        fixture.assertStateUpdatedWithProblems {
+        fixture.assertModelUpdatedWithProblems {
             fileChanged("build.gradle")
             projectConfigured(":buildSrc")
             modelsCreated(":a", ":b")
@@ -124,7 +124,7 @@ class IsolatedProjectsToolingApiCoupledProjectsIntegrationTest extends AbstractI
         """
 
         when:
-        executer.withArguments(ENABLE_CLI, WARN_PROBLEMS_CLI_OPT)
+        withIsolatedProjects(WARN_PROBLEMS_CLI_OPT)
         def model = runBuildAction(new FetchCustomModelForEachProject())
 
         then:
@@ -133,7 +133,7 @@ class IsolatedProjectsToolingApiCoupledProjectsIntegrationTest extends AbstractI
         model[0].message == "It works from project :b"
 
         and:
-        fixture.assertStateStoredWithProblems {
+        fixture.assertModelStoredWithProblems {
             projectConfigured(":buildSrc")
             projectsConfigured(":", ":a")
             buildModelCreated()
@@ -144,7 +144,7 @@ class IsolatedProjectsToolingApiCoupledProjectsIntegrationTest extends AbstractI
         }
 
         when:
-        executer.withArguments(ENABLE_CLI)
+        withIsolatedProjects()
         def model2 = runBuildAction(new FetchCustomModelForEachProject())
 
         then:
@@ -152,13 +152,13 @@ class IsolatedProjectsToolingApiCoupledProjectsIntegrationTest extends AbstractI
         model2[0].message == "It works from project :b"
 
         and:
-        fixture.assertStateLoaded()
+        fixture.assertModelLoaded()
 
         when:
         file("a/build.gradle") << """
             // Some change
         """
-        executer.withArguments(ENABLE_CLI, WARN_PROBLEMS_CLI_OPT)
+        withIsolatedProjects(WARN_PROBLEMS_CLI_OPT)
         def model3 = runBuildAction(new FetchCustomModelForEachProject())
 
         then:
@@ -166,7 +166,7 @@ class IsolatedProjectsToolingApiCoupledProjectsIntegrationTest extends AbstractI
         model3[0].message == "It works from project :b"
 
         and:
-        fixture.assertStateUpdatedWithProblems {
+        fixture.assertModelUpdatedWithProblems {
             fileChanged("a/build.gradle")
             projectConfigured(":buildSrc")
             modelsQueriedAndNotPresent(":", ":a")
@@ -195,7 +195,7 @@ class IsolatedProjectsToolingApiCoupledProjectsIntegrationTest extends AbstractI
         """
 
         when:
-        executer.withArguments(ENABLE_CLI, WARN_PROBLEMS_CLI_OPT)
+        withIsolatedProjects(WARN_PROBLEMS_CLI_OPT)
         def model = runBuildAction(new FetchCustomModelForEachProject())
 
         then:
@@ -204,7 +204,7 @@ class IsolatedProjectsToolingApiCoupledProjectsIntegrationTest extends AbstractI
         model[1].message == "the message"
 
         and:
-        fixture.assertStateStoredWithProblems {
+        fixture.assertModelStoredWithProblems {
             projectConfigured(":buildSrc")
             projectsConfigured(":", ":c")
             buildModelCreated()
@@ -213,7 +213,7 @@ class IsolatedProjectsToolingApiCoupledProjectsIntegrationTest extends AbstractI
         }
 
         when:
-        executer.withArguments(ENABLE_CLI)
+        withIsolatedProjects()
         def model2 = runBuildAction(new FetchCustomModelForEachProject())
 
         then:
@@ -222,13 +222,13 @@ class IsolatedProjectsToolingApiCoupledProjectsIntegrationTest extends AbstractI
         model2[1].message == "the message"
 
         and:
-        fixture.assertStateLoaded()
+        fixture.assertModelLoaded()
 
         when:
         file("b/build.gradle") << """
             // some change
         """
-        executer.withArguments(ENABLE_CLI, WARN_PROBLEMS_CLI_OPT)
+        withIsolatedProjects(WARN_PROBLEMS_CLI_OPT)
         def model3 = runBuildAction(new FetchCustomModelForEachProject())
 
         then:
@@ -237,7 +237,7 @@ class IsolatedProjectsToolingApiCoupledProjectsIntegrationTest extends AbstractI
         model3[1].message == "the message"
 
         and:
-        fixture.assertStateUpdatedWithProblems {
+        fixture.assertModelUpdatedWithProblems {
             fileChanged("b/build.gradle")
             projectConfigured(":buildSrc")
             projectConfigured(":")
@@ -247,7 +247,7 @@ class IsolatedProjectsToolingApiCoupledProjectsIntegrationTest extends AbstractI
         }
 
         when:
-        executer.withArguments(ENABLE_CLI)
+        withIsolatedProjects()
         def model4 = runBuildAction(new FetchCustomModelForEachProject())
 
         then:
@@ -256,12 +256,12 @@ class IsolatedProjectsToolingApiCoupledProjectsIntegrationTest extends AbstractI
         model4[1].message == "the message"
 
         and:
-        fixture.assertStateLoaded()
+        fixture.assertModelLoaded()
 
         file("a/build.gradle") << """
             myExtension.message = "new message"
         """
-        executer.withArguments(ENABLE_CLI, WARN_PROBLEMS_CLI_OPT)
+        withIsolatedProjects(WARN_PROBLEMS_CLI_OPT)
         def model5 = runBuildAction(new FetchCustomModelForEachProject())
 
         then:
@@ -270,7 +270,7 @@ class IsolatedProjectsToolingApiCoupledProjectsIntegrationTest extends AbstractI
         model5[1].message == "new message"
 
         and:
-        fixture.assertStateUpdatedWithProblems {
+        fixture.assertModelUpdatedWithProblems {
             fileChanged("a/build.gradle")
             projectConfigured(":buildSrc")
             projectConfigured(":")
@@ -300,7 +300,7 @@ class IsolatedProjectsToolingApiCoupledProjectsIntegrationTest extends AbstractI
         """
 
         when:
-        executer.withArguments(ENABLE_CLI, WARN_PROBLEMS_CLI_OPT)
+        withIsolatedProjects(WARN_PROBLEMS_CLI_OPT)
         def model = runBuildAction(new FetchCustomModelForEachProject())
 
         then:
@@ -309,7 +309,7 @@ class IsolatedProjectsToolingApiCoupledProjectsIntegrationTest extends AbstractI
         model[1].message == "the message"
 
         and:
-        fixture.assertStateStoredWithProblems {
+        fixture.assertModelStoredWithProblems {
             projectConfigured(":buildSrc")
             projectsConfigured(":", ":c")
             buildModelCreated()
@@ -318,7 +318,7 @@ class IsolatedProjectsToolingApiCoupledProjectsIntegrationTest extends AbstractI
         }
 
         when:
-        executer.withArguments(ENABLE_CLI)
+        withIsolatedProjects()
         def model2 = runBuildAction(new FetchCustomModelForEachProject())
 
         then:
@@ -327,13 +327,13 @@ class IsolatedProjectsToolingApiCoupledProjectsIntegrationTest extends AbstractI
         model2[1].message == "the message"
 
         and:
-        fixture.assertStateLoaded()
+        fixture.assertModelLoaded()
 
         when:
         file("b/build.gradle") << """
             // some change
         """
-        executer.withArguments(ENABLE_CLI, WARN_PROBLEMS_CLI_OPT, "-Dorg.gradle.internal.invalidate-coupled-projects=false")
+        withIsolatedProjects(WARN_PROBLEMS_CLI_OPT, "-Dorg.gradle.internal.invalidate-coupled-projects=false")
         def model3 = runBuildAction (new FetchCustomModelForEachProject())
 
         then:
@@ -342,7 +342,7 @@ class IsolatedProjectsToolingApiCoupledProjectsIntegrationTest extends AbstractI
         model3[1].message == "default message"
 
         and:
-        fixture.assertStateUpdatedWithProblems {
+        fixture.assertModelUpdatedWithProblems {
             fileChanged("b/build.gradle")
             projectConfigured(":buildSrc")
             projectsConfigured(":", ":b")

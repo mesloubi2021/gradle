@@ -36,6 +36,7 @@ dependencies {
     api(projects.fileTemp)
     api(projects.fileCollections)
     api(projects.processServices)
+    api(projects.persistentCache)
 
     api(libs.inject)
     api(libs.jsr305)
@@ -43,6 +44,7 @@ dependencies {
 
     implementation(projects.functional)
     implementation(projects.native)
+    implementation(projects.serialization)
 
     implementation(libs.guava)
     implementation(libs.asm)
@@ -60,4 +62,10 @@ dependencies {
 }
 tasks.isolatedProjectsIntegTest {
     enabled = false
+}
+
+packageCycles {
+    // Needed for the factory methods in the interface since the implementation is in an internal package
+    // which in turn references the interface.
+    excludePatterns.add("org/gradle/jvm/toolchain/JavaLanguageVersion**")
 }

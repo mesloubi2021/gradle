@@ -8,13 +8,12 @@ plugins {
 description = "Kotlin DSL Provider"
 
 dependencies {
-
     api(projects.buildProcessServices)
     api(projects.baseServices)
-    api(projects.processServices)
     api(projects.core)
     api(projects.coreApi)
     api(projects.concurrent)
+    api(projects.fileOperations)
     api(projects.hashing)
     api(projects.kotlinDslToolingModels)
     api(projects.loggingApi)
@@ -32,6 +31,9 @@ dependencies {
     implementation(projects.instrumentationReporting)
     implementation(projects.buildOperations)
     implementation(projects.buildOption)
+    implementation(projects.declarativeDslEvaluator)
+    implementation(projects.declarativeDslInternalUtils)
+    implementation(projects.declarativeDslProvider)
     implementation(projects.enterpriseLogging)
     implementation(projects.enterpriseOperations)
     implementation(projects.execution)
@@ -64,6 +66,9 @@ dependencies {
         isTransitive = false
     }
     implementation(libs.futureKotlin("scripting-jvm")) {
+        isTransitive = false
+    }
+    implementation(libs.futureKotlin("scripting-jvm-host")) {
         isTransitive = false
     }
     implementation(libs.futureKotlin("scripting-compiler-embeddable")) {

@@ -3,6 +3,7 @@ package configurations
 import com.alibaba.fastjson.JSONObject
 import com.alibaba.fastjson.annotation.JSONField
 import common.functionalTestExtraParameters
+import common.getBuildScanCustomValueParam
 import jetbrains.buildServer.configs.kotlin.BuildSteps
 import jetbrains.buildServer.configs.kotlin.buildFeatures.perfmon
 import model.CIBuildModel
@@ -25,6 +26,15 @@ sealed class ParallelizationMethod {
         override val extraBuildParameters: String = "-DenableTestDistribution=%enableTestDistribution% -DtestDistributionPartitionSizeInSeconds=%testDistributionPartitionSizeInSeconds%"
     }
 
+    object TestDistributionAlpine : ParallelizationMethod() {
+        override val extraBuildParameters: String = listOf(
+            "-DenableTestDistribution=true",
+            "-DtestDistributionPartitionSizeInSeconds=%testDistributionPartitionSizeInSeconds%",
+            "-PtestDistributionDogfoodingTag=alpine",
+            "-PmaxTestDistributionLocalExecutors=0"
+        ).joinToString(" ")
+    }
+
     class TeamCityParallelTests(val numberOfBatches: Int) : ParallelizationMethod()
 
     companion object {
@@ -32,7 +42,9 @@ sealed class ParallelizationMethod {
             val methodJsonObject = jsonObject.getJSONObject("parallelizationMethod") ?: return None
             return when (methodJsonObject.getString("name")) {
                 null -> None
+                None::class.simpleName -> None
                 TestDistribution::class.simpleName -> TestDistribution
+                TestDistributionAlpine::class.simpleName -> TestDistributionAlpine
                 TeamCityParallelTests::class.simpleName -> TeamCityParallelTests(methodJsonObject.getIntValue("numberOfBatches"))
                 else -> throw IllegalArgumentException("Unknown parallelization method")
             }
@@ -50,7 +62,6 @@ class FunctionalTest(
     parallelizationMethod: ParallelizationMethod = ParallelizationMethod.None,
     subprojects: List<String> = listOf(),
     extraParameters: String = "",
-    maxParallelForks: String = "%maxParallelForks%",
     extraBuildSteps: BuildSteps.() -> Unit = {},
     preBuildSteps: BuildSteps.() -> Unit = {}
 ) : OsAwareBaseGradleBuildType(os = testCoverage.os, stage = stage, init = {
@@ -60,7 +71,8 @@ class FunctionalTest(
     val testTasks = getTestTaskName(testCoverage, subprojects)
 
     val assembledExtraParameters = mutableListOf(
-        functionalTestExtraParameters(functionalTestTag, testCoverage.os, testCoverage.arch, testCoverage.testJvmVersion.major.toString(), testCoverage.vendor.name),
+        stage.getBuildScanCustomValueParam(testCoverage),
+        functionalTestExtraParameters(listOf(functionalTestTag), testCoverage.os, testCoverage.arch, testCoverage.testJvmVersion.major.toString(), testCoverage.vendor.name),
         "-PflakyTests=${determineFlakyTestStrategy(stage)}",
         extraParameters,
         parallelizationMethod.extraBuildParameters

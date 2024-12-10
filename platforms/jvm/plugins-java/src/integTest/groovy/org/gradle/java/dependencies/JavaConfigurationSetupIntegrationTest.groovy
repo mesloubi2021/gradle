@@ -112,6 +112,8 @@ class JavaConfigurationSetupIntegrationTest extends AbstractIntegrationSpec {
         if (deprecated(alternatives)) {
             executer.expectDeprecationWarning()
         }
+
+        executer.withArgument("--no-problems-report")
         if (forbidden(alternatives) || doesNotExist(alternatives)) {
             fails 'resolve'
         } else {
@@ -167,6 +169,7 @@ class JavaConfigurationSetupIntegrationTest extends AbstractIntegrationSpec {
         if (deprecated(alternatives)) {
             executer.expectDeprecationWarning()
         }
+        executer.withArgument("--no-problems-report")
         if (forbidden(alternatives) || doesNotExist(alternatives)) {
             fails 'resolve'
         } else {
@@ -214,7 +217,7 @@ class JavaConfigurationSetupIntegrationTest extends AbstractIntegrationSpec {
                id('java-library')
             }
             repositories {
-                maven { url '$mavenRepo.uri' }
+                maven { url = '$mavenRepo.uri' }
             }
             dependencies {
                compileOnlyApi 'org:a:1.0'

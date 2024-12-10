@@ -1,4 +1,4 @@
-// Copyright (C) 2023 Gradle, Inc.
+// Copyright (C) 2024 Gradle, Inc.
 //
 // Licensed under the Creative Commons Attribution-Noncommercial-ShareAlike 4.0 International License.;
 // you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ Gradle provides multiple mechanisms for configuring the behavior of Gradle itsel
 |Flags that configure build behavior and Gradle features
 |`--rerun`
 
-|<<sec:project_properties,Project properties>>
+|<<sec:project_specific_properties,Project properties>>
 |Properties specific to your Gradle project
 |`TestFilter::isFailOnNoMatchingTests=false`
 
@@ -130,7 +130,7 @@ You can place the `gradle.properties` file in the root directory of your project
 
 When resolving properties, Gradle first looks in the project-level `gradle.properties` file, then in the user-level `gradle.properties` file located in `GRADLE_USER_HOME`, and finally in the `gradle.properties` file located in `GRADLE_HOME`, with project-level properties taking precedence over user-level and installation-level properties.
 
-[[sec:project_properties]]
+[[sec:project_specific_properties]]
 == Project properties
 
 Project properties are specific to your Gradle project, they can be used to customize your build.
@@ -386,6 +386,11 @@ _Default is `normal`._
 Specify the project-specific cache directory. Defaults to `.gradle` in the root project directory."
 +
 _Default is `.gradle`._
+
+`org.gradle.problems.report=(true|false)`::
+
+Enable (`true`) or disable (`false`) the generation of `build/reports/problems-report.html`. `true` is the default.
+The report is generated with problems provided to the <<reporting_problems.adoc#sec:reporting_problems,Problems API>>.
 
 `org.gradle.unsafe.isolated-projects=(true,false)`::
 Enables project isolation, which enables configuration caching.

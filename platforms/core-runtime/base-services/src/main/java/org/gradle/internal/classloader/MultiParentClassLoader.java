@@ -16,6 +16,7 @@
 package org.gradle.internal.classloader;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.commons.lang.StringUtils;
 
 import java.io.IOException;
 import java.net.URL;
@@ -34,7 +35,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * Note: It's usually a good idea to add a {@link CachingClassLoader} between this ClassLoader and any
  * ClassLoaders that use it as a parent, to prevent every path in the ClassLoader graph being searched.
  */
-public class MultiParentClassLoader extends ClassLoader implements ClassLoaderHierarchy {
+public class MultiParentClassLoader extends ClassLoader implements DelegatingClassLoader, ClassLoaderHierarchy {
 
     private final List<ClassLoader> parents;
 
@@ -53,6 +54,11 @@ public class MultiParentClassLoader extends ClassLoader implements ClassLoaderHi
     public MultiParentClassLoader(Collection<? extends ClassLoader> parents) {
         super(null);
         this.parents = new CopyOnWriteArrayList<ClassLoader>(parents);
+    }
+
+    @Override
+    public String toString() {
+        return MultiParentClassLoader.class.getSimpleName() + "(" + StringUtils.join(parents, ", ") + ")";
     }
 
     public void addParent(ClassLoader parent) {

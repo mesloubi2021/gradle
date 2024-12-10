@@ -28,7 +28,9 @@ import java.io.Serializable
     DataType.LongDataType::class,
     DataType.StringDataType::class,
     DataType.BooleanDataType::class,
-    DataClass::class
+    DataType.ClassDataType::class,
+    DataClass::class,
+    EnumClass::class
 ])
 sealed interface DataType : Serializable {
 
@@ -51,6 +53,15 @@ sealed interface DataType : Serializable {
     interface NullType : DataType
 
     interface UnitType : DataType
+
+    @ToolingModelContract(subTypes = [
+        DataClass::class,
+        EnumClass::class
+    ])
+    sealed interface ClassDataType : DataType {
+        val name: FqName
+        val javaTypeName: String
+    }
 
     // TODO: `Any` type?
     // TODO: Support subtyping of some sort in the schema rather than via reflection?

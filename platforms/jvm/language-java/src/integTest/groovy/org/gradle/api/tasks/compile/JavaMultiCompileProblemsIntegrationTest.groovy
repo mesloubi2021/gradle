@@ -59,20 +59,18 @@ class JavaMultiCompileProblemsIntegrationTest extends AbstractIntegrationSpec {
         failure.assertHasFailures(2)
         collectedProblems.size() == 2
         verifyAll(receivedProblem(0)) {
-            fqid == 'compilation:java:java-compilation-error'
+            fqid == 'compilation:java:compiler-err-expected'
             contextualLabel == '\';\' expected'
             // The formatted information is checked deeper in JavaCompileProblemsIntegrationTest,
             // we are just interested if the file is correct
-            def formatted = additionalData.asMap['formatted'] as String
-            formatted.contains("Project1.java")
+            details.concat("Project1.java")
         }
         verifyAll(receivedProblem(1)) {
-            fqid == 'compilation:java:java-compilation-error'
+            fqid == 'compilation:java:compiler-err-expected'
             contextualLabel == '\';\' expected'
             // The formatted information is checked deeper in JavaCompileProblemsIntegrationTest,
             // we are just interested if the file is correct
-            def formatted = additionalData.asMap['formatted'] as String
-            formatted.contains("Project2.java")
+            details.contains("Project2.java")
         }
     }
 

@@ -25,6 +25,37 @@ import static org.gradle.internal.cc.impl.fingerprint.ProjectSpecificFingerprint
 
 class ConfigurationCacheDebugLogIntegrationTest extends AbstractConfigurationCacheIntegrationTest {
 
+    def "logs oid and hashes"() {
+        given:
+        buildFile """
+            def scriptObject = [foo: "bar"]
+            task ok { Task it ->
+                def oid = Integer.toHexString(System.identityHashCode(scriptObject))
+                def hash = Integer.toHexString(scriptObject.hashCode())
+                doLast {
+                    // reference required so it is actually cached
+                    println scriptObject
+                    println("oid = \$oid")
+                    println("hash = \$hash")
+                    println("ok")
+                }
+            }
+        """
+
+        when:
+        executer.withArgument "-D$ConfigurationCacheDebugOption.PROPERTY_NAME=true"
+
+        and:
+        configurationCacheRun 'ok'
+
+        then: "object identity hashcode and hashcode are logged"
+        def oid = (output =~ /oid = (.*)/)[0][1]
+        def hash = (output =~ /hash = (.*)/)[0][1]
+        def events = collectOutputEvents(true)
+        events.contains([profile: "child ':' state", type: "O", "frame": "java.util.LinkedHashMap", "oid": oid, "hash": hash])
+        events.contains([profile: "child ':' state", type: "C", "frame": "java.util.LinkedHashMap", "oid": oid, "hash": hash])
+    }
+
     def "logs categorized open/close frame events for state and fingerprint files"() {
         given:
         createDirs("sub")
@@ -66,17 +97,23 @@ class ConfigurationCacheDebugLogIntegrationTest extends AbstractConfigurationCac
         events.contains([profile: "build ':' state", type: "O", frame: "Work Graph"])
 
         and: "state frame events are logged"
-        events.contains([profile: "build ':' state", type: "O", frame: ":ok"])
-        events.contains([profile: "build ':' state", type: "C", frame: ":ok"])
-        events.contains([profile: "build ':' state", type: "O", frame: ":sub:ok"])
-        events.contains([profile: "build ':' state", type: "C", frame: ":sub:ok"])
+        events.contains([profile: "child ':' state", type: "O", frame: ":ok"])
+        events.contains([profile: "child ':' state", type: "C", frame: ":ok"])
+        events.contains([profile: "child ':sub' state", type: "O", frame: ":sub:ok"])
+        events.contains([profile: "child ':sub' state", type: "C", frame: ":sub:ok"])
 
         and: "task type frame follows task path frame follows LocalTaskNode frame"
-        def firstTaskNodeIndex = events.findIndexOf { it.frame == LocalTaskNode.name }
-        firstTaskNodeIndex > 0
-        events[firstTaskNodeIndex] == [profile: "build ':' state", type: "O", frame: LocalTaskNode.name]
-        events[firstTaskNodeIndex + 1] == [profile: "build ':' state", type: "O", frame: ":ok"]
-        events[firstTaskNodeIndex + 2] == [profile: "build ':' state", type: "O", frame: DefaultTask.name]
+        ["child ':' state", "child ':sub' state"].each {profile ->
+            def firstTaskNodeIndex = events.findIndexOf { it.profile == profile && it.frame == LocalTaskNode.name }
+            firstTaskNodeIndex > 0
+            events[firstTaskNodeIndex] == [profile: "$profile", type: "O", frame: LocalTaskNode.name]
+
+            def secondTaskNodeIndex = events.findIndexOf {it.profile == profile && it.type == "O" && it.frame == ":ok" }
+            firstTaskNodeIndex < secondTaskNodeIndex
+
+            def thirdTaskNodeIndex = events.findIndexOf {it.profile == profile && it.type == "O" && it.frame == DefaultTask.name }
+            secondTaskNodeIndex < thirdTaskNodeIndex
+        }
 
         where:
         enablement << CCDebugEnablement.values()
@@ -88,14 +125,16 @@ class ConfigurationCacheDebugLogIntegrationTest extends AbstractConfigurationCac
         DEBUG_LOG_LEVEL,
     }
 
-    private Collection<Map<String, Object>> collectOutputEvents() {
-        def pattern = /\{"profile":"(.*?)","type":"(O|C)","frame":"(.*?)","at":\d+\,"sn":\d+\}/
+    private Collection<Map<String, Object>> collectOutputEvents(boolean includeOidAndHash = false) {
+        def pattern = /\{"profile":"(.*?)","type":"(O|C)","frame":"(.*?)"(?:,"oid":"(.*?)","hash":"(.*?)")?,"at":\d+\,"sn":\d+\}/
         (output =~ pattern)
             .findAll()
             .collect { matchResult ->
                 //noinspection GroovyUnusedAssignment
-                def (ignored, profile, type, frame) = matchResult
-                [profile: profile, type: type, frame: frame]
+                def (ignored, profile, type, frame, oid, hash) = matchResult
+                [profile: profile, type: type, frame: frame] +
+                    (includeOidAndHash && oid && hash ?
+                        [oid: oid, hash: hash] : [:])
             }
     }
 }

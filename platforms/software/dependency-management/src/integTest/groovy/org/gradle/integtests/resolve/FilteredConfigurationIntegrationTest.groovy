@@ -35,7 +35,7 @@ include "child1", "child2"
         buildFile << """
 allprojects {
     repositories {
-        maven { url '${mavenRepo.uri}' }
+        maven { url = '${mavenRepo.uri}' }
     }
     configurations {
         compile
@@ -70,7 +70,7 @@ task verify {
     doLast {
         println "file-dependencies: " + configurations.compile.files { it instanceof FileCollectionDependency }.collect { it.name }
         println "external-dependencies: " + configurations.compile.files { it instanceof ExternalDependency }.collect { it.name }
-        println "child1-dependencies: " + configurations.compile.files { it instanceof ProjectDependency && it.dependencyProject.name == 'child1' }.collect { it.name }
+        println "child1-dependencies: " + configurations.compile.files { it instanceof ProjectDependency && it.path == ':child1' }.collect { it.name }
 
         assert configurations.compile.resolvedConfiguration.files == configurations.compile.files
         assert configurations.compile.resolvedConfiguration.lenientConfiguration.files == configurations.compile.files
@@ -82,6 +82,8 @@ task verify {
         executer.expectDocumentedDeprecationWarning("The Configuration.files(Closure) method has been deprecated. This is scheduled to be removed in Gradle 9.0. Use Configuration.getIncoming().artifactView(Action) with a componentFilter instead. Consult the upgrading guide for further information: https://docs.gradle.org/current/userguide/upgrading_version_8.html#deprecate_filtered_configuration_file_and_filecollection_methods")
         executer.expectDocumentedDeprecationWarning("The Configuration.files(Closure) method has been deprecated. This is scheduled to be removed in Gradle 9.0. Use Configuration.getIncoming().artifactView(Action) with a componentFilter instead. Consult the upgrading guide for further information: https://docs.gradle.org/current/userguide/upgrading_version_8.html#deprecate_filtered_configuration_file_and_filecollection_methods")
         executer.expectDocumentedDeprecationWarning("The Configuration.files(Closure) method has been deprecated. This is scheduled to be removed in Gradle 9.0. Use Configuration.getIncoming().artifactView(Action) with a componentFilter instead. Consult the upgrading guide for further information: https://docs.gradle.org/current/userguide/upgrading_version_8.html#deprecate_filtered_configuration_file_and_filecollection_methods")
+        executer.expectDocumentedDeprecationWarning("The ResolvedConfiguration.getFiles() method has been deprecated. This is scheduled to be removed in Gradle 9.0. Use Configuration#getFiles instead. Consult the upgrading guide for further information: https://docs.gradle.org/current/userguide/upgrading_version_8.html#deprecate_legacy_configuration_get_files")
+        executer.expectDocumentedDeprecationWarning("The LenientConfiguration.getFiles() method has been deprecated. This is scheduled to be removed in Gradle 9.0. Use a lenient ArtifactView instead. Consult the upgrading guide for further information: https://docs.gradle.org/current/userguide/upgrading_version_8.html#deprecate_legacy_configuration_get_files")
         run "verify"
 
         then:
@@ -103,7 +105,7 @@ include "child1", "child2"
         buildFile << """
 allprojects {
     repositories {
-        maven { url '${mavenRepo.uri}' }
+        maven { url = '${mavenRepo.uri}' }
     }
     configurations {
         compile
@@ -132,7 +134,7 @@ project(':child1') {
 task verify {
     doLast {
         println "external-dependencies: " + configurations.compile.files { it instanceof ExternalDependency }.collect { it.name }
-        println "child1-dependencies: " + configurations.compile.files { it instanceof ProjectDependency && it.dependencyProject.name == 'child1' }.collect { it.name }
+        println "child1-dependencies: " + configurations.compile.files { it instanceof ProjectDependency && it.path == ':child1' }.collect { it.name }
 
         assert configurations.compile.resolvedConfiguration.files == configurations.compile.files
         assert configurations.compile.resolvedConfiguration.lenientConfiguration.files == configurations.compile.files
@@ -143,6 +145,8 @@ task verify {
         when:
         executer.expectDocumentedDeprecationWarning("The Configuration.files(Closure) method has been deprecated. This is scheduled to be removed in Gradle 9.0. Use Configuration.getIncoming().artifactView(Action) with a componentFilter instead. Consult the upgrading guide for further information: https://docs.gradle.org/current/userguide/upgrading_version_8.html#deprecate_filtered_configuration_file_and_filecollection_methods")
         executer.expectDocumentedDeprecationWarning("The Configuration.files(Closure) method has been deprecated. This is scheduled to be removed in Gradle 9.0. Use Configuration.getIncoming().artifactView(Action) with a componentFilter instead. Consult the upgrading guide for further information: https://docs.gradle.org/current/userguide/upgrading_version_8.html#deprecate_filtered_configuration_file_and_filecollection_methods")
+        executer.expectDocumentedDeprecationWarning("The ResolvedConfiguration.getFiles() method has been deprecated. This is scheduled to be removed in Gradle 9.0. Use Configuration#getFiles instead. Consult the upgrading guide for further information: https://docs.gradle.org/current/userguide/upgrading_version_8.html#deprecate_legacy_configuration_get_files")
+        executer.expectDocumentedDeprecationWarning("The LenientConfiguration.getFiles() method has been deprecated. This is scheduled to be removed in Gradle 9.0. Use a lenient ArtifactView instead. Consult the upgrading guide for further information: https://docs.gradle.org/current/userguide/upgrading_version_8.html#deprecate_legacy_configuration_get_files")
         run "verify"
 
         then:

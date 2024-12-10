@@ -46,6 +46,10 @@ Example:
 > PROVIDE a screenshot or snippet illustrating the new feature, if applicable
 > LINK to the full documentation for more details
 
+<!-- To embed videos, use the macros below. You can extract the URL from YouTube by clicking the "Share" button. For Wistia, contact Gradle's Video Team -->
+@youtube(Summary,6aRM8lAYyUA?si=qeXDSX8_8hpVmH01)@
+@wistia(Summary,a5izazvgit)@
+
 ================== END TEMPLATE ==========================
 
 
@@ -53,16 +57,7 @@ Example:
 ADD RELEASE FEATURES BELOW
 vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv -->
 
-<a name="native-plugin-improvements"></a>
-### Core plugin improvements
 
-Gradle provides core plugins for build authors, offering essential tools to simplify project setup and configuration across various languages and platforms.
-
-#### Configuration cache compatibility for Swift and C++ plugins
-
-The [Swift](userguide/swift_application_plugin.html) and [C++](userguide/cpp_application_plugin.html) core plugins are now [configuration cache](userguide/performance.html#enable_configuration_cache) compatible.
-
-The [`xctest`](userguide/xctest_plugin.html) and [`visual-studio`](userguide/visual_studio_plugin.html) plugins are not yet compatible.
 
 <!-- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ADD RELEASE FEATURES ABOVE

@@ -28,8 +28,10 @@ import org.gradle.internal.installation.GradleInstallation;
 import org.gradle.internal.instrumentation.agent.AgentUtils;
 import org.gradle.internal.io.StreamByteBuffer;
 import org.gradle.internal.jvm.JavaInfo;
+import org.gradle.internal.jvm.JpmsConfiguration;
 import org.gradle.internal.jvm.Jvm;
 import org.gradle.internal.jvm.inspection.JvmInstallationMetadata;
+import org.gradle.internal.jvm.inspection.JvmVersionDetector;
 import org.gradle.internal.os.OperatingSystem;
 import org.gradle.internal.serialize.FlushableEncoder;
 import org.gradle.internal.serialize.kryo.KryoBackedEncoder;
@@ -40,11 +42,12 @@ import org.gradle.launcher.daemon.DaemonExecHandleBuilder;
 import org.gradle.launcher.daemon.bootstrap.DaemonOutputConsumer;
 import org.gradle.launcher.daemon.configuration.DaemonParameters;
 import org.gradle.launcher.daemon.configuration.DaemonPriority;
+import org.gradle.launcher.daemon.context.DaemonRequestContext;
 import org.gradle.launcher.daemon.diagnostics.DaemonStartupInfo;
 import org.gradle.launcher.daemon.registry.DaemonDir;
 import org.gradle.launcher.daemon.toolchain.DaemonJavaToolchainQueryService;
 import org.gradle.launcher.daemon.toolchain.DaemonJvmCriteria;
-import org.gradle.process.internal.DefaultExecActionFactory;
+import org.gradle.process.internal.DefaultClientExecHandleBuilderFactory;
 import org.gradle.process.internal.ExecHandle;
 import org.gradle.process.internal.JvmOptions;
 import org.gradle.util.GradleVersion;
@@ -57,6 +60,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -66,15 +70,19 @@ public class DefaultDaemonStarter implements DaemonStarter {
 
     private final DaemonDir daemonDir;
     private final DaemonParameters daemonParameters;
+    private final DaemonRequestContext daemonRequestContext;
     private final DaemonGreeter daemonGreeter;
     private final JvmVersionValidator versionValidator;
+    private final JvmVersionDetector jvmVersionDetector;
     private final DaemonJavaToolchainQueryService daemonJavaToolchainQueryService;
 
-    public DefaultDaemonStarter(DaemonDir daemonDir, DaemonParameters daemonParameters, DaemonGreeter daemonGreeter, JvmVersionValidator versionValidator, DaemonJavaToolchainQueryService daemonJavaToolchainQueryService) {
+    public DefaultDaemonStarter(DaemonDir daemonDir, DaemonParameters daemonParameters, DaemonRequestContext daemonRequestContext, DaemonGreeter daemonGreeter, JvmVersionValidator versionValidator, JvmVersionDetector jvmVersionDetector, DaemonJavaToolchainQueryService daemonJavaToolchainQueryService) {
         this.daemonDir = daemonDir;
         this.daemonParameters = daemonParameters;
+        this.daemonRequestContext = daemonRequestContext;
         this.daemonGreeter = daemonGreeter;
         this.versionValidator = versionValidator;
+        this.jvmVersionDetector = jvmVersionDetector;
         this.daemonJavaToolchainQueryService = daemonJavaToolchainQueryService;
     }
 
@@ -82,17 +90,25 @@ public class DefaultDaemonStarter implements DaemonStarter {
     public DaemonStartupInfo startDaemon(boolean singleUse) {
         String daemonUid = UUID.randomUUID().toString();
 
-        DaemonJvmCriteria criteria = daemonParameters.getRequestedJvmCriteria();
-        final JavaInfo resolvedJvm;
+        DaemonJvmCriteria criteria = daemonRequestContext.getJvmCriteria();
+        final File resolvedJava;
+        final int majorJavaVersion;
+
         if (criteria instanceof DaemonJvmCriteria.Spec) {
             // Gradle daemon properties have been defined
             IncubationLogger.incubatingFeatureUsed("Daemon JVM discovery");
             JvmInstallationMetadata jvmInstallationMetadata = daemonJavaToolchainQueryService.findMatchingToolchain((DaemonJvmCriteria.Spec) criteria);
-            resolvedJvm = Jvm.forHome(jvmInstallationMetadata.getJavaHome().toFile());
+            JavaInfo resolvedJvm = Jvm.forHome(jvmInstallationMetadata.getJavaHome().toFile());
+            majorJavaVersion = ((DaemonJvmCriteria.Spec) criteria).getJavaVersion().asInt();
+            resolvedJava = resolvedJvm.getJavaExecutable();
         } else if (criteria instanceof DaemonJvmCriteria.JavaHome) {
-            resolvedJvm = Jvm.forHome(((DaemonJvmCriteria.JavaHome) criteria).getJavaHome());
+            JavaInfo resolvedJvm = Jvm.forHome(((DaemonJvmCriteria.JavaHome) criteria).getJavaHome());
+            majorJavaVersion = jvmVersionDetector.getJavaVersionMajor(resolvedJvm);
+            resolvedJava = resolvedJvm.getJavaExecutable();
         } else if (criteria instanceof DaemonJvmCriteria.LauncherJvm) {
-            resolvedJvm = Jvm.current();
+            JavaInfo resolvedJvm = Jvm.current();
+            majorJavaVersion = Jvm.current().getJavaVersionMajor();
+            resolvedJava = resolvedJvm.getJavaExecutable();
         } else {
             throw new IllegalStateException("Unknown DaemonJvmCriteria type: " + criteria.getClass().getName());
         }
@@ -116,13 +132,15 @@ public class DefaultDaemonStarter implements DaemonStarter {
             throw new IllegalStateException("Unable to construct a bootstrap classpath when starting the daemon");
         }
 
-        versionValidator.validate(resolvedJvm);
+        versionValidator.validate(majorJavaVersion);
 
         List<String> daemonArgs = new ArrayList<>();
-        daemonArgs.addAll(getPriorityArgs(daemonParameters.getPriority()));
-        daemonArgs.add(resolvedJvm.getJavaExecutable().getAbsolutePath());
-
-        List<String> daemonOpts = daemonParameters.getEffectiveJvmArgs();
+        daemonArgs.addAll(getPriorityArgs(daemonRequestContext.getPriority()));
+        daemonArgs.add(resolvedJava.getAbsolutePath());
+        Collection<String> daemonOpts = daemonRequestContext.getDaemonOpts();
+        if (majorJavaVersion >= 9) {
+            daemonArgs.addAll(JpmsConfiguration.GRADLE_DAEMON_JPMS_ARGS);
+        }
         daemonArgs.addAll(daemonOpts);
         daemonArgs.add("-cp");
         daemonArgs.add(CollectionUtils.join(File.pathSeparator, classpath.getAsFiles()));
@@ -132,7 +150,7 @@ public class DefaultDaemonStarter implements DaemonStarter {
         }
 
         ClassPath agentClasspath = registry.getModule(AgentUtils.AGENT_MODULE_NAME).getImplementationClasspath();
-        if (daemonParameters.shouldApplyInstrumentationAgent()) {
+        if (daemonRequestContext.shouldApplyInstrumentationAgent()) {
             if (agentClasspath.isEmpty()) {
                 throw new IllegalStateException("Cannot find the agent JAR");
             }
@@ -204,10 +222,9 @@ public class DefaultDaemonStarter implements DaemonStarter {
             DaemonOutputConsumer outputConsumer = new DaemonOutputConsumer();
 
             // This factory should be injected but leaves non-daemon threads running when used from the tooling API client
-            @SuppressWarnings("deprecation")
-            DefaultExecActionFactory execActionFactory = DefaultExecActionFactory.root(gradleUserHome);
+            DefaultClientExecHandleBuilderFactory execActionFactory = DefaultClientExecHandleBuilderFactory.root(gradleUserHome);
             try {
-                ExecHandle handle = new DaemonExecHandleBuilder().build(args, workingDir, outputConsumer, stdInput, execActionFactory.newExec());
+                ExecHandle handle = new DaemonExecHandleBuilder().build(args, workingDir, outputConsumer, stdInput, execActionFactory.newExecHandleBuilder());
 
                 handle.start();
                 LOGGER.debug("Gradle daemon process is starting. Waiting for the daemon to detach...");

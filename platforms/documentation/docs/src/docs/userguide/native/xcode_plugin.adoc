@@ -1,4 +1,4 @@
-// Copyright (C) 2023 Gradle, Inc.
+// Copyright (C) 2024 Gradle, Inc.
 //
 // Licensed under the Creative Commons Attribution-Noncommercial-ShareAlike 4.0 International License.;
 // you may not use this file except in compliance with the License.
@@ -14,8 +14,6 @@
 
 [[xcode_plugin]]
 = Xcode
-
-WARNING: The Xcode Plugin is not compatible with the <<configuration_cache.adoc#config_cache:plugins:core,configuration cache>>.
 
 The Xcode Plugin generate files that are used by the https://developer.apple.com/xcode/[Xcode IDE] to open Gradle projects into Xcode (`File` - `Open...`). The generated Xcode project delegates build actions to Gradle.
 

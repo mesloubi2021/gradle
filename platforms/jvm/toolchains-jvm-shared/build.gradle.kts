@@ -28,9 +28,9 @@ dependencies {
     api(projects.baseServices)
     api(projects.coreApi)
     api(projects.fileCollections)
+    api(projects.fileOperations)
     api(projects.jvmServices)
     api(projects.persistentCache)
-    api(projects.core)
 
     implementation(projects.functional)
 
@@ -48,8 +48,6 @@ dependencies {
 }
 
 packageCycles {
-    // Needed for the factory methods in the interface
-    excludePatterns.add("org/gradle/jvm/toolchain/JavaLanguageVersion**")
     excludePatterns.add("org/gradle/jvm/toolchain/**")
 }
 

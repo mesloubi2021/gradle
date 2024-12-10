@@ -47,7 +47,7 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         """
 
         when:
-        executer.withArguments(ENABLE_CLI)
+        withIsolatedProjects()
         def model = runBuildAction(new FetchCustomModelForEachProject())
 
         then:
@@ -58,7 +58,7 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         model[3].message == "project :d classpath = 0"
 
         and:
-        fixture.assertStateStored {
+        fixture.assertModelStored {
             projectConfigured(":buildSrc")
             projectConfigured(":")
             buildModelCreated()
@@ -66,7 +66,7 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         }
 
         when:
-        executer.withArguments(ENABLE_CLI)
+        withIsolatedProjects()
         def model2 = runBuildAction(new FetchCustomModelForEachProject())
 
         then:
@@ -77,13 +77,13 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         model2[3].message == "project :d classpath = 0"
 
         and:
-        fixture.assertStateLoaded()
+        fixture.assertModelLoaded()
 
         when:
         file("a/build.gradle") << """
             // some change
         """
-        executer.withArguments(ENABLE_CLI)
+        withIsolatedProjects()
         def model3 = runBuildAction(new FetchCustomModelForEachProject())
 
         then:
@@ -94,7 +94,7 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         model3[3].message == "project :d classpath = 0"
 
         and:
-        fixture.assertStateUpdated {
+        fixture.assertModelUpdated {
             fileChanged("a/build.gradle")
             projectConfigured(":buildSrc")
             projectConfigured(":")
@@ -122,7 +122,7 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         """
 
         when:
-        executer.withArguments(ENABLE_CLI)
+        withIsolatedProjects()
         def model = runBuildAction(new FetchCustomModelForEachProject())
 
         then:
@@ -132,7 +132,7 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         model[2].message == "project :c classpath = 0"
 
         and:
-        fixture.assertStateStored {
+        fixture.assertModelStored {
             projectConfigured(":buildSrc")
             projectConfigured(":")
             buildModelCreated()
@@ -140,7 +140,7 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         }
 
         when:
-        executer.withArguments(ENABLE_CLI)
+        withIsolatedProjects()
         def model2 = runBuildAction(new FetchCustomModelForEachProject())
 
         then:
@@ -150,7 +150,7 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         model2[2].message == "project :c classpath = 0"
 
         and:
-        fixture.assertStateLoaded()
+        fixture.assertModelLoaded()
 
         when:
         file("a/build.gradle") << """
@@ -158,7 +158,7 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
                 implementation(project(":b"))
             }
         """
-        executer.withArguments(ENABLE_CLI)
+        withIsolatedProjects()
         def model3 = runBuildAction(new FetchCustomModelForEachProject())
 
         then:
@@ -168,7 +168,7 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         model3[2].message == "project :c classpath = 0"
 
         and:
-        fixture.assertStateUpdated {
+        fixture.assertModelUpdated {
             fileChanged("a/build.gradle")
             projectConfigured(":buildSrc")
             projectConfigured(":")
@@ -178,7 +178,7 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         }
 
         when:
-        executer.withArguments(ENABLE_CLI)
+        withIsolatedProjects()
         def model4 = runBuildAction(new FetchCustomModelForEachProject())
 
         then:
@@ -188,13 +188,13 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         model4[2].message == "project :c classpath = 0"
 
         and:
-        fixture.assertStateLoaded()
+        fixture.assertModelLoaded()
 
         when:
         file("a/build.gradle") << """
             // some change
         """
-        executer.withArguments(ENABLE_CLI)
+        withIsolatedProjects()
         def model5 = runBuildAction(new FetchCustomModelForEachProject())
 
         then:
@@ -204,7 +204,7 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         model5[2].message == "project :c classpath = 0"
 
         and:
-        fixture.assertStateUpdated {
+        fixture.assertModelUpdated {
             fileChanged("a/build.gradle")
             projectConfigured(":buildSrc")
             projectConfigured(":")
@@ -235,7 +235,7 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         """
 
         when:
-        executer.withArguments(ENABLE_CLI)
+        withIsolatedProjects()
         def model = runBuildAction(new FetchCustomModelForEachProject())
 
         then:
@@ -245,7 +245,7 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         model[2].message == "project :c classpath = 0"
 
         and:
-        fixture.assertStateStored {
+        fixture.assertModelStored {
             projectConfigured(":buildSrc")
             projectConfigured(":")
             buildModelCreated()
@@ -253,7 +253,7 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         }
 
         when:
-        executer.withArguments(ENABLE_CLI)
+        withIsolatedProjects()
         def model2 = runBuildAction(new FetchCustomModelForEachProject())
 
         then:
@@ -263,7 +263,7 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         model2[2].message == "project :c classpath = 0"
 
         and:
-        fixture.assertStateLoaded()
+        fixture.assertModelLoaded()
 
         when:
         file("a/build.gradle") << """
@@ -271,7 +271,7 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
                 implementation(project(":b"))
             }
         """
-        executer.withArguments(ENABLE_CLI)
+        withIsolatedProjects()
         def model3 = runBuildAction(new FetchCustomModelForEachProject())
 
         then:
@@ -281,7 +281,7 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         model3[2].message == "project :c classpath = 0"
 
         and:
-        fixture.assertStateUpdated {
+        fixture.assertModelUpdated {
             fileChanged("a/build.gradle")
             projectConfigured(":buildSrc")
             projectConfigured(":")
@@ -291,7 +291,7 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         }
 
         when:
-        executer.withArguments(ENABLE_CLI)
+        withIsolatedProjects()
         def model4 = runBuildAction(new FetchCustomModelForEachProject())
 
         then:
@@ -301,13 +301,13 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         model4[2].message == "project :c classpath = 0"
 
         and:
-        fixture.assertStateLoaded()
+        fixture.assertModelLoaded()
 
         when:
         file("a/build.gradle") << """
             // some change
         """
-        executer.withArguments(ENABLE_CLI)
+        withIsolatedProjects()
         def model5 = runBuildAction(new FetchCustomModelForEachProject())
 
         then:
@@ -317,7 +317,7 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         model5[2].message == "project :c classpath = 0"
 
         and:
-        fixture.assertStateUpdated {
+        fixture.assertModelUpdated {
             fileChanged("a/build.gradle")
             projectConfigured(":buildSrc")
             projectConfigured(":")
@@ -351,7 +351,7 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         """
 
         when:
-        executer.withArguments(ENABLE_CLI)
+        withIsolatedProjects()
         def model = runBuildAction(new FetchCustomModelForEachProject())
 
         then:
@@ -361,7 +361,7 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         model[2].message == "project :c classpath = 0"
 
         and:
-        fixture.assertStateStored {
+        fixture.assertModelStored {
             projectConfigured(":buildSrc")
             projectConfigured(":")
             buildModelCreated()
@@ -369,7 +369,7 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         }
 
         when:
-        executer.withArguments(ENABLE_CLI)
+        withIsolatedProjects()
         def model2 = runBuildAction(new FetchCustomModelForEachProject())
 
         then:
@@ -379,12 +379,12 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         model2[2].message == "project :c classpath = 0"
 
         and:
-        fixture.assertStateLoaded()
+        fixture.assertModelLoaded()
 
         when:
         file("a/build.gradle").replace('implementation(project(":b"))', "")
 
-        executer.withArguments(ENABLE_CLI)
+        withIsolatedProjects()
         def model3 = runBuildAction(new FetchCustomModelForEachProject())
 
         then:
@@ -394,7 +394,7 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         model3[2].message == "project :c classpath = 0"
 
         and:
-        fixture.assertStateUpdated {
+        fixture.assertModelUpdated {
             fileChanged("a/build.gradle")
             projectConfigured(":buildSrc")
             projectConfigured(":")
@@ -403,7 +403,7 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         }
 
         when:
-        executer.withArguments(ENABLE_CLI)
+        withIsolatedProjects()
         def model4 = runBuildAction(new FetchCustomModelForEachProject())
 
         then:
@@ -413,13 +413,13 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         model4[2].message == "project :c classpath = 0"
 
         and:
-        fixture.assertStateLoaded()
+        fixture.assertModelLoaded()
 
         when:
         file("a/build.gradle") << """
             // some change
         """
-        executer.withArguments(ENABLE_CLI)
+        withIsolatedProjects()
         def model5 = runBuildAction(new FetchCustomModelForEachProject())
 
         then:
@@ -429,7 +429,7 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         model5[2].message == "project :c classpath = 0"
 
         and:
-        fixture.assertStateUpdated {
+        fixture.assertModelUpdated {
             fileChanged("a/build.gradle")
             projectConfigured(":buildSrc")
             projectConfigured(":")
@@ -463,7 +463,7 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         """
 
         when:
-        executer.withArguments(ENABLE_CLI)
+        withIsolatedProjects()
         def model = runBuildAction(new FetchCustomModelForEachProject())
 
         then:
@@ -473,7 +473,7 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         model[2].message == "project :c classpath = 0"
 
         and:
-        fixture.assertStateStored {
+        fixture.assertModelStored {
             projectConfigured(":buildSrc")
             projectConfigured(":")
             buildModelCreated()
@@ -481,7 +481,7 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         }
 
         when:
-        executer.withArguments(ENABLE_CLI)
+        withIsolatedProjects()
         def model2 = runBuildAction(new FetchCustomModelForEachProject())
 
         then:
@@ -491,13 +491,13 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         model2[2].message == "project :c classpath = 0"
 
         and:
-        fixture.assertStateLoaded()
+        fixture.assertModelLoaded()
 
         when:
         file("c/build.gradle") << """
             // some change
         """
-        executer.withArguments(ENABLE_CLI)
+        withIsolatedProjects()
         def model3 = runBuildAction(new FetchCustomModelForEachProject())
 
         then:
@@ -507,7 +507,7 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         model3[2].message == "project :c classpath = 0"
 
         and:
-        fixture.assertStateUpdated {
+        fixture.assertModelUpdated {
             fileChanged("c/build.gradle")
             projectConfigured(":buildSrc")
             projectConfigured(":")
@@ -516,7 +516,7 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         }
 
         when:
-        executer.withArguments(ENABLE_CLI)
+        withIsolatedProjects()
         def model4 = runBuildAction(new FetchCustomModelForEachProject())
 
         then:
@@ -526,13 +526,13 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         model4[2].message == "project :c classpath = 0"
 
         and:
-        fixture.assertStateLoaded()
+        fixture.assertModelLoaded()
 
         when:
         file("b/build.gradle") << """
             // some change
         """
-        executer.withArguments(ENABLE_CLI)
+        withIsolatedProjects()
         def model5 = runBuildAction(new FetchCustomModelForEachProject())
 
         then:
@@ -542,7 +542,7 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         model5[2].message == "project :c classpath = 0"
 
         and:
-        fixture.assertStateUpdated {
+        fixture.assertModelUpdated {
             fileChanged("b/build.gradle")
             projectConfigured(":buildSrc")
             projectConfigured(":")
@@ -583,7 +583,7 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         """
 
         when:
-        executer.withArguments(ENABLE_CLI)
+        withIsolatedProjects()
         def model = runBuildAction(new FetchCustomModelForEachProject())
 
         then:
@@ -594,7 +594,7 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         model[3].message == "project :d classpath = 0"
 
         and:
-        fixture.assertStateStored {
+        fixture.assertModelStored {
             projectConfigured(":buildSrc")
             projectConfigured(":")
             buildModelCreated()
@@ -602,7 +602,7 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         }
 
         when:
-        executer.withArguments(ENABLE_CLI)
+        withIsolatedProjects()
         def model2 = runBuildAction(new FetchCustomModelForEachProject())
 
         then:
@@ -613,7 +613,7 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         model2[3].message == "project :d classpath = 0"
 
         and:
-        fixture.assertStateLoaded()
+        fixture.assertModelLoaded()
 
         when:
         file("a/build.gradle") << """
@@ -621,7 +621,7 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
                 implementation(project(":d"))
             }
         """
-        executer.withArguments(ENABLE_CLI)
+        withIsolatedProjects()
         def model3 = runBuildAction(new FetchCustomModelForEachProject())
 
         then:
@@ -632,7 +632,7 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         model3[3].message == "project :d classpath = 0"
 
         and:
-        fixture.assertStateUpdated {
+        fixture.assertModelUpdated {
             fileChanged("a/build.gradle")
             projectConfigured(":buildSrc")
             projectConfigured(":")
@@ -671,7 +671,7 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         """
 
         when:
-        executer.withArguments(ENABLE_CLI)
+        withIsolatedProjects()
         def models = runPhasedBuildAction(new FetchPartialCustomModelForEachProject(), new FetchCustomModelForEachProject())
 
         then:
@@ -690,7 +690,7 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         model[3].message == "project :d classpath = 0"
 
         and:
-        fixture.assertStateStored {
+        fixture.assertModelStored {
             projectConfigured(":buildSrc")
             projectConfigured(":")
             buildModelCreated()
@@ -698,7 +698,7 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         }
 
         when:
-        executer.withArguments(ENABLE_CLI)
+        withIsolatedProjects()
         def models2 = runPhasedBuildAction(new FetchPartialCustomModelForEachProject(), new FetchCustomModelForEachProject())
 
         then:
@@ -717,13 +717,13 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         model2[3].message == "project :d classpath = 0"
 
         and:
-        fixture.assertStateLoaded()
+        fixture.assertModelLoaded()
 
         when:
         file("a/build.gradle") << """
             // some change
         """
-        executer.withArguments(ENABLE_CLI)
+        withIsolatedProjects()
         def models3 = runPhasedBuildAction(new FetchPartialCustomModelForEachProject(), new FetchCustomModelForEachProject())
 
         then:
@@ -742,7 +742,7 @@ class IsolatedProjectsToolingModelsWithDependencyResolutionIntegrationTest exten
         model3[3].message == "project :d classpath = 0"
 
         and:
-        fixture.assertStateUpdated {
+        fixture.assertModelUpdated {
             fileChanged("a/build.gradle")
             projectConfigured(":buildSrc")
             projectConfigured(":")

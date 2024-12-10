@@ -32,8 +32,7 @@ import org.gradle.api.attributes.MultipleCandidatesDetails;
 import org.gradle.api.attributes.Usage;
 import org.gradle.api.attributes.java.TargetJvmEnvironment;
 import org.gradle.api.attributes.java.TargetJvmVersion;
-import org.gradle.api.internal.ReusableAction;
-import org.gradle.api.internal.attributes.AttributesSchemaWithDescribers;
+import org.gradle.api.internal.attributes.AttributeDescriberRegistry;
 import org.gradle.api.model.ObjectFactory;
 
 import javax.inject.Inject;
@@ -86,13 +85,21 @@ public abstract class JavaEcosystemSupport {
     @Deprecated
     public static final String DEPRECATED_JAVA_RUNTIME_RESOURCES = "java-runtime-resources";
 
-    public static void configureSchema(AttributesSchema attributesSchema, final ObjectFactory objectFactory) {
+    /**
+     * Configure the dependency management services so that they properly participate
+     * in dependency resolution for the Jvm ecosystem.
+     */
+    public static void configureServices(
+        AttributesSchema attributesSchema,
+        AttributeDescriberRegistry attributeDescribers,
+        ObjectFactory objectFactory
+    ) {
         configureUsage(attributesSchema, objectFactory);
         configureLibraryElements(attributesSchema, objectFactory);
         configureBundling(attributesSchema);
         configureTargetPlatform(attributesSchema);
         configureTargetEnvironment(attributesSchema);
-        configureConsumerDescriptors((AttributesSchemaWithDescribers) attributesSchema);
+        configureConsumerDescriptors(attributeDescribers);
         attributesSchema.attributeDisambiguationPrecedence(
                 Category.CATEGORY_ATTRIBUTE,
                 Usage.USAGE_ATTRIBUTE,
@@ -103,8 +110,8 @@ public abstract class JavaEcosystemSupport {
         );
     }
 
-    private static void configureConsumerDescriptors(AttributesSchemaWithDescribers attributesSchema) {
-        attributesSchema.addConsumerDescriber(new JavaEcosystemAttributesDescriber());
+    private static void configureConsumerDescriptors(AttributeDescriberRegistry describers) {
+        describers.addDescriber(new JavaEcosystemAttributesDescriber());
     }
 
     private static void configureTargetPlatform(AttributesSchema attributesSchema) {
@@ -146,8 +153,9 @@ public abstract class JavaEcosystemSupport {
             actionConfiguration.params(objectFactory.named(LibraryElements.class, LibraryElements.JAR));
         });
     }
+
     @VisibleForTesting
-    public static class UsageDisambiguationRules implements AttributeDisambiguationRule<Usage>, ReusableAction {
+    public static class UsageDisambiguationRules implements AttributeDisambiguationRule<Usage> {
         final Usage javaApi;
         final Usage javaRuntime;
         final Usage javaApiJars;
@@ -208,7 +216,7 @@ public abstract class JavaEcosystemSupport {
     }
 
     @VisibleForTesting
-    public static class UsageCompatibilityRules implements AttributeCompatibilityRule<Usage>, ReusableAction {
+    public static class UsageCompatibilityRules implements AttributeCompatibilityRule<Usage> {
         private static final Set<String> COMPATIBLE_WITH_JAVA_API = ImmutableSet.of(
                 DEPRECATED_JAVA_API_JARS,
                 DEPRECATED_JAVA_RUNTIME_JARS,
@@ -237,7 +245,7 @@ public abstract class JavaEcosystemSupport {
     }
 
     @VisibleForTesting
-    static class LibraryElementsDisambiguationRules implements AttributeDisambiguationRule<LibraryElements>, ReusableAction {
+    static class LibraryElementsDisambiguationRules implements AttributeDisambiguationRule<LibraryElements> {
         final LibraryElements jar;
 
         @Inject
@@ -262,7 +270,7 @@ public abstract class JavaEcosystemSupport {
     }
 
     @VisibleForTesting
-    static class LibraryElementsCompatibilityRules implements AttributeCompatibilityRule<LibraryElements>, ReusableAction {
+    static class LibraryElementsCompatibilityRules implements AttributeCompatibilityRule<LibraryElements> {
 
         @Override
         public void execute(CompatibilityCheckDetails<LibraryElements> details) {
@@ -285,7 +293,7 @@ public abstract class JavaEcosystemSupport {
         }
     }
 
-    private static class TargetJvmEnvironmentCompatibilityRules implements AttributeCompatibilityRule<TargetJvmEnvironment>, ReusableAction {
+    private static class TargetJvmEnvironmentCompatibilityRules implements AttributeCompatibilityRule<TargetJvmEnvironment> {
 
         // public constructor to make reflective initialization happy.
         public TargetJvmEnvironmentCompatibilityRules() {}
@@ -296,7 +304,7 @@ public abstract class JavaEcosystemSupport {
         }
     }
 
-    private static class TargetJvmEnvironmentDisambiguationRules implements AttributeDisambiguationRule<TargetJvmEnvironment>, ReusableAction {
+    private static class TargetJvmEnvironmentDisambiguationRules implements AttributeDisambiguationRule<TargetJvmEnvironment> {
 
         // public constructor to make reflective initialization happy.
         public TargetJvmEnvironmentDisambiguationRules() {}
@@ -314,7 +322,7 @@ public abstract class JavaEcosystemSupport {
     }
 
     @VisibleForTesting
-    static class BundlingCompatibilityRules implements AttributeCompatibilityRule<Bundling>, ReusableAction {
+    static class BundlingCompatibilityRules implements AttributeCompatibilityRule<Bundling> {
         private static final Set<String> COMPATIBLE_WITH_EXTERNAL = ImmutableSet.of(
                 // if we ask for "external" dependencies, it's still fine to bring a fat jar if nothing else is available
                 Bundling.EMBEDDED,
@@ -346,7 +354,7 @@ public abstract class JavaEcosystemSupport {
     }
 
     @VisibleForTesting
-    static class BundlingDisambiguationRules implements AttributeDisambiguationRule<Bundling>, ReusableAction {
+    static class BundlingDisambiguationRules implements AttributeDisambiguationRule<Bundling> {
 
         @Override
         public void execute(MultipleCandidatesDetails<Bundling> details) {

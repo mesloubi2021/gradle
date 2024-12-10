@@ -19,6 +19,8 @@ package org.gradle.api;
 import groovy.lang.Closure;
 import groovy.lang.DelegatesTo;
 import groovy.lang.MissingPropertyException;
+import groovy.transform.stc.ClosureParams;
+import groovy.transform.stc.SimpleType;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.LoggingManager;
 import org.gradle.api.plugins.ExtensionAware;
@@ -78,7 +80,7 @@ import java.util.Set;
  * next task by throwing a {@link org.gradle.api.tasks.StopExecutionException}. Using these exceptions allows you to
  * have precondition actions which skip execution of the task, or part of the task, if not true.</p>
  *
- * <a id="dependencies"></a><h2>Task Dependencies and Task Ordering</h2>
+ * <h2 id="dependencies">Task Dependencies and Task Ordering</h2>
  *
  * <p>A task may have dependencies on other tasks or might be scheduled to always run after another task.
  * Gradle ensures that all task dependencies and ordering rules are honored when executing tasks, so that the task is executed after
@@ -122,7 +124,7 @@ import java.util.Set;
  *
  * <h2>Using a Task in a Build File</h2>
  *
- * <a id="properties"></a> <h3>Dynamic Properties</h3>
+ * <h3 id="properties">Dynamic Properties</h3>
  *
  * <p>A {@code Task} has 4 'scopes' for properties. You can access these properties by name from the build file or by
  * calling the {@link #property(String)} method. You can change the value of these properties by calling the {@link #setProperty(String, Object)} method.</p>
@@ -284,7 +286,7 @@ public interface Task extends Comparable<Task>, ExtensionAware, Named {
      *
      * @param onlyIfClosure code to execute to determine if task should be run
      */
-    void onlyIf(Closure onlyIfClosure);
+    void onlyIf(Closure<?> onlyIfClosure);
 
     /**
      * Do not track the state of the task.
@@ -367,7 +369,7 @@ public interface Task extends Comparable<Task>, ExtensionAware, Named {
      *
      * @param onlyIfClosure code to execute to determine if task should be run
      */
-    void setOnlyIf(Closure onlyIfClosure);
+    void setOnlyIf(Closure<?> onlyIfClosure);
 
     /**
      * <p>Execute the task only if the given spec is satisfied. The spec will be evaluated at task execution time, not
@@ -443,7 +445,9 @@ public interface Task extends Comparable<Task>, ExtensionAware, Named {
      * @param action The action closure to execute.
      * @return This task.
      */
-    Task doFirst(@DelegatesTo(Task.class) Closure action);
+    Task doFirst(@DelegatesTo(Task.class)
+                 @ClosureParams(value = SimpleType.class, options = "org.gradle.api.Task")
+                 Closure action);
 
     /**
      * <p>Adds the given {@link Action} to the beginning of this task's action list.</p>
@@ -482,7 +486,9 @@ public interface Task extends Comparable<Task>, ExtensionAware, Named {
      * @param action The action closure to execute.
      * @return This task.
      */
-    Task doLast(@DelegatesTo(Task.class) Closure action);
+    Task doLast(@DelegatesTo(Task.class)
+                @ClosureParams(value = SimpleType.class, options = "org.gradle.api.Task")
+                Closure action);
 
     /**
      * <p>Returns if this task is enabled or not.</p>
@@ -841,9 +847,13 @@ public interface Task extends Comparable<Task>, ExtensionAware, Named {
     /**
      * Registers a {@link BuildService} that is used by this task so
      * {@link BuildServiceRegistration#getMaxParallelUsages() its constraint on parallel execution} can be honored.
+     * <p>
+     * This is not necessary for task properties declared as {@link org.gradle.api.services.ServiceReference}s.
+     * </p>
      *
      * @param service The service provider.
      * @since 6.1
+     * @see org.gradle.api.services.ServiceReference
      */
     void usesService(Provider<? extends BuildService<?>> service);
 }

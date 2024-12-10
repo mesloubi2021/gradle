@@ -40,6 +40,8 @@ class BuildOperationsFixture extends BuildOperationTreeQueries {
         executer.beforeExecute {
             this.tree = null
             executer.withArgument("-D$BuildOperationTrace.SYSPROP=$path")
+            // disable memory hungry tree generation
+            executer.withArgument("-D$BuildOperationTrace.TREE_SYSPROP=false")
         }
     }
 
@@ -94,6 +96,11 @@ class BuildOperationsFixture extends BuildOperationTreeQueries {
     @Override
     BuildOperationRecord only(Pattern displayName) {
         return getTree().only(displayName)
+    }
+
+    @Override
+    BuildOperationRecord singleOrNone(Pattern displayName) {
+        return getTree().singleOrNone(displayName)
     }
 
     @Override

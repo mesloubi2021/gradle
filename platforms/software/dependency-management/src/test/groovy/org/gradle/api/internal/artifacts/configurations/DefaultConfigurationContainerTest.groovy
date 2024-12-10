@@ -32,8 +32,8 @@ import org.gradle.api.internal.artifacts.dsl.PublishArtifactNotationParserFactor
 import org.gradle.api.internal.artifacts.dsl.dependencies.DependencyLockingProvider
 import org.gradle.api.internal.artifacts.ivyservice.moduleconverter.DefaultRootComponentMetadataBuilder
 import org.gradle.api.internal.attributes.AttributeDesugaring
-import org.gradle.api.internal.attributes.EmptySchema
-import org.gradle.api.internal.attributes.ImmutableAttributesFactory
+import org.gradle.api.internal.attributes.AttributesFactory
+import org.gradle.api.internal.attributes.AttributesSchemaInternal
 import org.gradle.api.internal.file.TestFiles
 import org.gradle.api.internal.initialization.StandaloneDomainObjectContext
 import org.gradle.api.internal.project.ProjectStateRegistry
@@ -63,7 +63,7 @@ class DefaultConfigurationContainerTest extends Specification {
     private UserCodeApplicationContext userCodeApplicationContext = Mock()
     private CalculatedValueContainerFactory calculatedValueContainerFactory = Mock()
     private Instantiator instantiator = TestUtil.instantiatorFactory().decorateLenient()
-    private ImmutableAttributesFactory immutableAttributesFactory = AttributeTestUtil.attributesFactory()
+    private AttributesFactory attributesFactory = AttributeTestUtil.attributesFactory()
     private DefaultRootComponentMetadataBuilder metadataBuilder = Mock(DefaultRootComponentMetadataBuilder) {
         getValidator() >> Mock(MutationValidator)
     }
@@ -84,7 +84,7 @@ class DefaultConfigurationContainerTest extends Specification {
                 TestFiles.resolver(),
                 TestFiles.taskDependencyFactory(),
         ),
-        immutableAttributesFactory,
+        attributesFactory,
         Stub(ResolveExceptionMapper),
         new AttributeDesugaring(AttributeTestUtil.attributesFactory()),
         userCodeApplicationContext,
@@ -92,14 +92,15 @@ class DefaultConfigurationContainerTest extends Specification {
         Mock(WorkerThreadRegistry),
         TestUtil.domainObjectCollectionFactory(),
         calculatedValueContainerFactory,
-        TestFiles.taskDependencyFactory()
+        TestFiles.taskDependencyFactory(),
+        TestUtil.problemsService()
     )
     private DefaultConfigurationContainer configurationContainer = instantiator.newInstance(DefaultConfigurationContainer.class,
         instantiator,
         callbackActionDecorator,
         metaDataProvider,
         StandaloneDomainObjectContext.ANONYMOUS,
-        EmptySchema.INSTANCE,
+        Mock(AttributesSchemaInternal),
         rootComponentMetadataBuilderFactory,
         configurationFactory,
         Mock(ResolutionStrategyFactory)

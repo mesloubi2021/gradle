@@ -1,4 +1,4 @@
-// Copyright (C) 2023 Gradle, Inc.
+// Copyright (C) 2024 Gradle, Inc.
 //
 // Licensed under the Creative Commons Attribution-Noncommercial-ShareAlike 4.0 International License.;
 // you may not use this file except in compliance with the License.
@@ -14,8 +14,6 @@
 
 [[cpp_testing]]
 = Testing in C++ projects
-
-WARNING: The {cpp} testing support is not compatible with the <<configuration_cache.adoc#config_cache:plugins:core,configuration cache>>.
 
 Testing in the native ecosystem takes many forms.
 

@@ -19,6 +19,8 @@ package org.gradle.api;
 import groovy.lang.Closure;
 import groovy.lang.DelegatesTo;
 import groovy.lang.MissingPropertyException;
+import groovy.transform.stc.ClosureParams;
+import groovy.transform.stc.SimpleType;
 import org.gradle.api.artifacts.ConfigurationContainer;
 import org.gradle.api.artifacts.dsl.ArtifactHandler;
 import org.gradle.api.artifacts.dsl.DependencyFactory;
@@ -120,7 +122,7 @@ import java.util.concurrent.Callable;
  * Plugins can be applied using the {@link PluginAware#apply(java.util.Map)} method, or by using the {@link org.gradle.plugin.use.PluginDependenciesSpec} plugins script block.
  * </p>
  *
- * <a id="properties"></a> <h2>Dynamic Project Properties</h2>
+ * <h2 id="properties">Dynamic Project Properties</h2>
  *
  * <p>Gradle executes the project's build file against the <code>Project</code> instance to configure the project. Any
  * property or method which your script uses is delegated through to the associated <code>Project</code> object.  This
@@ -168,11 +170,11 @@ import java.util.concurrent.Callable;
  * <p>When writing a property, the project searches the above scopes in order, and sets the property in the first scope
  * it finds the property in. If not found, an exception is thrown. See {@link #setProperty(String, Object)} for more details.</p>
  *
- * <a id="extraproperties"></a> <h3>Extra Properties</h3>
+ * <h3 id="extraproperties">Extra Properties</h3>
  *
- * All extra properties must be defined through the &quot;ext&quot; namespace. Once an extra property has been defined,
+ * <p>All extra properties must be defined through the &quot;ext&quot; namespace. Once an extra property has been defined,
  * it is available directly on the owning object (in the below case the Project, Task, and sub-projects respectively) and can
- * be read and updated. Only the initial declaration that needs to be done via the namespace.
+ * be read and updated. Only the initial declaration that needs to be done via the namespace.</p>
  *
  * <pre>
  * project.ext.prop1 = "foo"
@@ -392,9 +394,10 @@ public interface Project extends Comparable<Project>, ExtensionAware, PluginAwar
      * <p>Returns the direct children of this project.</p>
      *
      * @return A map from child project name to child project. Returns an empty map if this project does not have
-     *         any children.
+     * any children.
      */
-    @ForExternalUse // See ProjectInternal#getChildProjects
+    @ForExternalUse
+    // See ProjectInternal#getChildProjects
     Map<String, Project> getChildProjects();
 
     /**
@@ -457,7 +460,7 @@ public interface Project extends Comparable<Project>, ExtensionAware, PluginAwar
      * calling {@link #task(java.util.Map, String)} with an empty options map.</p>
      *
      * <p>After the task is added to the project, it is made available as a property of the project, so that you can
-     * reference the task by name in your build file.  See <a href="#properties">here</a> for more details</p>
+     * reference the task by name in your build file. See <a href="#properties">properties</a> for more details</p>
      *
      * <p>If a task with the given name already exists in this project, an exception is thrown.</p>
      *
@@ -608,7 +611,6 @@ public interface Project extends Comparable<Project>, ExtensionAware, PluginAwar
 
     /**
      * <p>Declares that this project has an evaluation dependency on each of its child projects.</p>
-     *
      */
     void evaluationDependsOnChildren();
 
@@ -639,7 +641,10 @@ public interface Project extends Comparable<Project>, ExtensionAware, PluginAwar
      * @return The project with the given path. Never returns null.
      * @throws UnknownProjectException If no project with the given path exists.
      */
-    Project project(String path, @DelegatesTo(Project.class) Closure configureClosure);
+    Project project(String path,
+                    @DelegatesTo(Project.class)
+                    @ClosureParams(value = SimpleType.class, options = "org.gradle.api.Project")
+                    Closure configureClosure);
 
     /**
      * <p>Locates a project by path and configures it using the given action. If the path is relative, it is
@@ -649,7 +654,6 @@ public interface Project extends Comparable<Project>, ExtensionAware, PluginAwar
      * @param configureAction The action to use to configure the project.
      * @return The project with the given path. Never returns null.
      * @throws UnknownProjectException If no project with the given path exists.
-     *
      * @since 3.4
      */
     Project project(String path, Action<? super Project> configureAction);
@@ -1062,7 +1066,9 @@ public interface Project extends Comparable<Project>, ExtensionAware, PluginAwar
      *
      * @param closure The closure for configuring the execution.
      * @return the result of the execution
+     * @deprecated Since 8.11. This method will be removed in Gradle 9.0. Use {@link org.gradle.process.ExecOperations#javaexec(Action)} or {@link ProviderFactory#javaexec(Action)} instead.
      */
+    @Deprecated
     ExecResult javaexec(@DelegatesTo(JavaExecSpec.class) Closure closure);
 
     /**
@@ -1073,7 +1079,9 @@ public interface Project extends Comparable<Project>, ExtensionAware, PluginAwar
      *
      * @param action The action for configuring the execution.
      * @return the result of the execution
+     * @deprecated Since 8.11. This method will be removed in Gradle 9.0. Use {@link org.gradle.process.ExecOperations#javaexec(Action)} or {@link ProviderFactory#javaexec(Action)} instead.
      */
+    @Deprecated
     ExecResult javaexec(Action<? super JavaExecSpec> action);
 
     /**
@@ -1081,7 +1089,9 @@ public interface Project extends Comparable<Project>, ExtensionAware, PluginAwar
      *
      * @param closure The closure for configuring the execution.
      * @return the result of the execution
+     * @deprecated Since 8.11. This method will be removed in Gradle 9.0. Use {@link org.gradle.process.ExecOperations#exec(Action)} or {@link ProviderFactory#exec(Action)} instead.
      */
+    @Deprecated
     ExecResult exec(@DelegatesTo(ExecSpec.class) Closure closure);
 
     /**
@@ -1092,7 +1102,9 @@ public interface Project extends Comparable<Project>, ExtensionAware, PluginAwar
      *
      * @param action The action for configuring the execution.
      * @return the result of the execution
+     * @deprecated Since 8.11. This method will be removed in Gradle 9.0. Use {@link org.gradle.process.ExecOperations#exec(Action)} or {@link ProviderFactory#exec(Action)} instead.
      */
+    @Deprecated
     ExecResult exec(Action<? super ExecSpec> action);
 
     /**
@@ -1246,7 +1258,9 @@ public interface Project extends Comparable<Project>, ExtensionAware, PluginAwar
      *
      * @param configureClosure the closure to use to configure the published artifacts.
      */
-    void artifacts(@DelegatesTo(ArtifactHandler.class) Closure configureClosure);
+    void artifacts(@DelegatesTo(ArtifactHandler.class)
+                   @ClosureParams(value = SimpleType.class, options = "org.gradle.api.artifacts.dsl.ArtifactHandler")
+                   Closure configureClosure);
 
     /**
      * <p>Configures the published artifacts for this project.
@@ -1282,8 +1296,8 @@ public interface Project extends Comparable<Project>, ExtensionAware, PluginAwar
      * as if they were properties and methods of this project. See <a href="#properties">here</a> for more details</p>
      *
      * @return The <code>Convention</code>. Never returns null.
-     * @deprecated The concept of conventions is deprecated. Use extensions if possible.
      * @see ExtensionAware#getExtensions()
+     * @deprecated The concept of conventions is deprecated. Use extensions if possible.
      */
     @Deprecated
     org.gradle.api.plugins.Convention getConvention();
@@ -1293,7 +1307,7 @@ public interface Project extends Comparable<Project>, ExtensionAware, PluginAwar
      *
      * @param otherProject The project to compare the nesting level with.
      * @return a negative integer, zero, or a positive integer as this project has a nesting level less than, equal to,
-     *         or greater than the specified object.
+     * or greater than the specified object.
      * @see #getDepth()
      */
     int depthCompare(Project otherProject);
@@ -1328,7 +1342,9 @@ public interface Project extends Comparable<Project>, ExtensionAware, PluginAwar
      *
      * @param configureClosure The closure to execute.
      */
-    void subprojects(@DelegatesTo(Project.class) Closure configureClosure);
+    void subprojects(@DelegatesTo(Project.class)
+                     @ClosureParams(value = SimpleType.class, options = "org.gradle.api.Project")
+                     Closure configureClosure);
 
     /**
      * <p>Configures this project and each of its sub-projects.</p>
@@ -1347,7 +1363,9 @@ public interface Project extends Comparable<Project>, ExtensionAware, PluginAwar
      *
      * @param configureClosure The closure to execute.
      */
-    void allprojects(@DelegatesTo(Project.class) Closure configureClosure);
+    void allprojects(@DelegatesTo(Project.class)
+                     @ClosureParams(value = SimpleType.class, options = "org.gradle.api.Project")
+                     Closure configureClosure);
 
     /**
      * <p>Adds an action to call immediately before this project is evaluated.</p>
@@ -1379,20 +1397,22 @@ public interface Project extends Comparable<Project>, ExtensionAware, PluginAwar
     /**
      * <p>Adds a closure to call immediately before this project is evaluated.</p>
      *
-     * @see Project#beforeEvaluate(Action)
-     *
      * @param closure The closure to call.
+     * @see Project#beforeEvaluate(Action)
      */
-    void beforeEvaluate(Closure closure);
+    void beforeEvaluate(@DelegatesTo(Project.class)
+                        @ClosureParams(value = SimpleType.class, options = "org.gradle.api.Project")
+                        Closure closure);
 
     /**
      * <p>Adds a closure to call immediately after this project is evaluated.</p>
      *
-     * @see Project#afterEvaluate(Action)
-     *
      * @param closure The closure to call.
+     * @see Project#afterEvaluate(Action)
      */
-    void afterEvaluate(@DelegatesTo(Project.class) Closure closure);
+    void afterEvaluate(@DelegatesTo(Project.class)
+                       @ClosureParams(value = SimpleType.class, options = "org.gradle.api.Project")
+                       Closure closure);
 
     /**
      * <p>Determines if this project has the given property. See <a href="#properties">here</a> for details of the
@@ -1467,9 +1487,9 @@ public interface Project extends Comparable<Project>, ExtensionAware, PluginAwar
      * </ol>
      *
      * @param propertyName The name of the property.
-     * @since 2.13
      * @return The value of the property, possibly null or null if not found.
      * @see Project#property(String)
+     * @since 2.13
      */
     @Nullable
     Object findProperty(String propertyName);
@@ -1639,14 +1659,17 @@ public interface Project extends Comparable<Project>, ExtensionAware, PluginAwar
      * @param closure Closure to configure the CopySpec
      * @return {@link WorkResult} that can be used to check if the copy did any work.
      */
-    WorkResult copy(@DelegatesTo(CopySpec.class) Closure closure);
+    WorkResult copy(@DelegatesTo(CopySpec.class)
+                    @ClosureParams(value = SimpleType.class, options = "org.gradle.api.file.CopySpec")
+                    Closure closure);
 
     /**
      * Copies the specified files.  The given action is used to configure a {@link CopySpec}, which is then used to
      * copy the files.
-     * @see #copy(Closure)
+     *
      * @param action Action to configure the CopySpec
      * @return {@link WorkResult} that can be used to check if the copy did any work.
+     * @see #copy(Closure)
      */
     WorkResult copy(Action<? super CopySpec> action);
 
@@ -1669,15 +1692,17 @@ public interface Project extends Comparable<Project>, ExtensionAware, PluginAwar
      * @param closure Closure to configure the CopySpec
      * @return The CopySpec
      */
-    CopySpec copySpec(@DelegatesTo(CopySpec.class) Closure closure);
+    CopySpec copySpec(@DelegatesTo(CopySpec.class)
+                      @ClosureParams(value = SimpleType.class, options = "org.gradle.api.file.CopySpec")
+                      Closure closure);
 
     /**
      * Creates a {@link CopySpec} which can later be used to copy files or create an archive. The given action is used
      * to configure the {@link CopySpec} before it is returned by this method.
      *
-     * @see #copySpec(Closure)
      * @param action Action to configure the CopySpec
      * @return The CopySpec
+     * @see #copySpec(Closure)
      */
     CopySpec copySpec(Action<? super CopySpec> action);
 
@@ -1719,8 +1744,8 @@ public interface Project extends Comparable<Project>, ExtensionAware, PluginAwar
      * </pre>
      *
      * @param action Action to configure the SyncSpec.
-     * @since 4.0
      * @return {@link WorkResult} that can be used to check if the sync did any work.
+     * @since 4.0
      */
     WorkResult sync(Action<? super SyncSpec> action);
 
@@ -1794,7 +1819,6 @@ public interface Project extends Comparable<Project>, ExtensionAware, PluginAwar
      * Configures software components.
      *
      * @param configuration Action to configure the software components.
-     *
      * @since 8.1
      */
     @Incubating

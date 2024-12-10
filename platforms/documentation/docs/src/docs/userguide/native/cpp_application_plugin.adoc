@@ -1,4 +1,4 @@
-// Copyright (C) 2023 Gradle, Inc.
+// Copyright (C) 2024 Gradle, Inc.
 //
 // Licensed under the Creative Commons Attribution-Noncommercial-ShareAlike 4.0 International License.;
 // you may not use this file except in compliance with the License.
@@ -14,8 +14,6 @@
 
 [[cpp_application_plugin]]
 = {cpp} Application
-
-WARNING: The {cpp} Application Plugin is not compatible with the <<configuration_cache.adoc#config_cache:plugins:core,configuration cache>>.
 
 The {cpp} Application Plugin provides the tasks, configurations and conventions for a building {cpp} application.
 

@@ -18,6 +18,7 @@ package org.gradle.api.internal.artifacts.configurations;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ExcludeRule;
 import org.gradle.api.artifacts.PublishArtifact;
+import org.gradle.api.internal.DomainObjectContext;
 import org.gradle.api.internal.artifacts.ResolveContext;
 import org.gradle.api.internal.attributes.AttributeContainerInternal;
 import org.gradle.api.internal.attributes.ImmutableAttributes;
@@ -42,6 +43,8 @@ public interface ConfigurationInternal extends ResolveContext, DeprecatableConfi
 
     String getDisplayName();
 
+    DisplayName asDescribable();
+
     @Override
     AttributeContainerInternal getAttributes();
 
@@ -52,7 +55,20 @@ public interface ConfigurationInternal extends ResolveContext, DeprecatableConfi
      */
     void runDependencyActions();
 
+    /**
+     * Marks this configuration as observed, meaning its state has been seen by some external operation
+     * and further changes to this context that would change its public state are forbidden.
+     */
+    void markAsObserved();
+
+    /**
+     * Legacy observation mechanism, will be removed in Gradle 9.0.
+     * <p>
+     * Prefer {@link #markAsObserved()}
+     */
     void markAsObserved(InternalState requestedState);
+
+    DomainObjectContext getDomainObjectContext();
 
     void addMutationValidator(MutationValidator validator);
 
