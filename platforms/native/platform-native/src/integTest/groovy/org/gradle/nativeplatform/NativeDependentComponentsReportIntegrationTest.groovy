@@ -17,11 +17,12 @@
 package org.gradle.nativeplatform
 
 import org.gradle.integtests.fixtures.AbstractIntegrationSpec
+import org.gradle.integtests.fixtures.StableConfigurationCacheDeprecations
 import org.gradle.integtests.fixtures.ToBeFixedForConfigurationCache
 import org.gradle.test.precondition.Requires
 import org.gradle.test.preconditions.IntegTestPreconditions
 
-class NativeDependentComponentsReportIntegrationTest extends AbstractIntegrationSpec {
+class NativeDependentComponentsReportIntegrationTest extends AbstractIntegrationSpec implements StableConfigurationCacheDeprecations {
 
     def setup() {
         settingsFile << "rootProject.name = 'test'"
@@ -32,6 +33,8 @@ class NativeDependentComponentsReportIntegrationTest extends AbstractIntegration
         buildFile simpleCppBuild()
 
         when:
+        executer.withArgument("--no-problems-report")
+        expectTaskGetProjectDeprecations()
         run "dependentComponents"
 
         then:
@@ -45,6 +48,8 @@ class NativeDependentComponentsReportIntegrationTest extends AbstractIntegration
         buildFile simpleCppBuild()
 
         when:
+        executer.withArgument("--no-problems-report")
+        expectTaskGetProjectDeprecations()
         run 'dependentComponents', '--component', component
 
         then:
@@ -62,6 +67,8 @@ class NativeDependentComponentsReportIntegrationTest extends AbstractIntegration
         buildFile simpleCppBuild()
 
         when:
+        executer.withArgument("--no-problems-report")
+        expectTaskGetProjectDeprecations()
         fails 'dependentComponents', '--component', 'unknown'
 
         then:
@@ -73,6 +80,8 @@ class NativeDependentComponentsReportIntegrationTest extends AbstractIntegration
         buildFile simpleBuildWithTestSuites()
 
         when:
+        executer.withArgument("--no-problems-report")
+        expectTaskGetProjectDeprecations()
         fails 'dependentComponents', '--test-suites', '--component', 'unknown', '--component', 'anonymous', '--component', 'whatever', '--component', 'lib', '--component', 'main', '--component', 'libTest'
 
         then:
@@ -84,6 +93,8 @@ class NativeDependentComponentsReportIntegrationTest extends AbstractIntegration
         buildFile simpleCppBuild()
 
         when:
+        executer.withArgument("--no-problems-report")
+        expectTaskGetProjectDeprecations()
         run 'dependentComponents', '--component', 'lib', '--component', 'main'
 
         then:
@@ -110,6 +121,7 @@ class NativeDependentComponentsReportIntegrationTest extends AbstractIntegration
         }
 
         when:
+        expectTaskGetProjectDeprecations()
         run 'dependentComponents'
 
         then:
@@ -144,6 +156,7 @@ class NativeDependentComponentsReportIntegrationTest extends AbstractIntegration
         '''.stripIndent()
 
         when:
+        expectTaskGetProjectDeprecations()
         run 'dependentComponents', option
 
         then:
@@ -187,6 +200,8 @@ class NativeDependentComponentsReportIntegrationTest extends AbstractIntegration
         '''.stripIndent()
 
         when:
+        executer.withArgument("--no-problems-report")
+        expectTaskGetProjectDeprecations()
         run 'dependentComponents'
 
         then:
@@ -200,6 +215,8 @@ class NativeDependentComponentsReportIntegrationTest extends AbstractIntegration
         buildFile multiProjectBuild()
 
         when:
+        executer.withArgument("--no-problems-report")
+        expectTaskGetProjectDeprecations()
         run 'libraries:dependentComponents', '--component', 'foo'
 
         then:
@@ -225,6 +242,7 @@ class NativeDependentComponentsReportIntegrationTest extends AbstractIntegration
         buildFile multiProjectBuild()
 
         when: 'two reports in parallel'
+        executer.withArgument("--no-problems-report")
         succeeds('-q', '--parallel', '--max-workers=4', 'libraries:dependentComponents', 'extensions:dependentComponents')
 
         then: 'reports are not mixed'
@@ -271,6 +289,8 @@ class NativeDependentComponentsReportIntegrationTest extends AbstractIntegration
         buildFile simpleBuildWithPrebuiltLibrary()
 
         expect:
+        executer.withArgument("--no-problems-report")
+        expectTaskGetProjectDeprecations()
         succeeds 'dependentComponents'
     }
 
@@ -279,6 +299,8 @@ class NativeDependentComponentsReportIntegrationTest extends AbstractIntegration
         buildFile simpleBuildWithTestSuites()
 
         when:
+        executer.withArgument("--no-problems-report")
+        expectTaskGetProjectDeprecations()
         run 'dependentComponents'
 
         then:
@@ -293,6 +315,7 @@ class NativeDependentComponentsReportIntegrationTest extends AbstractIntegration
         buildFile simpleBuildWithTestSuites()
 
         when:
+        expectTaskGetProjectDeprecations()
         run 'dependentComponents', option
 
         then:
@@ -347,6 +370,8 @@ class NativeDependentComponentsReportIntegrationTest extends AbstractIntegration
         '''.stripIndent()
 
         when:
+        executer.withArgument("--no-problems-report")
+        expectTaskGetProjectDeprecations()
         fails 'dependentComponents'
 
         then:
@@ -381,6 +406,8 @@ class NativeDependentComponentsReportIntegrationTest extends AbstractIntegration
         '''.stripIndent()
 
         when:
+        executer.withArgument("--no-problems-report")
+        expectTaskGetProjectDeprecations()
         fails 'dependentComponents'
 
         then:
@@ -415,6 +442,8 @@ class NativeDependentComponentsReportIntegrationTest extends AbstractIntegration
         '''.stripIndent()
 
         when:
+        executer.withArgument("--no-problems-report")
+        expectTaskGetProjectDeprecations()
         fails 'api:dependentComponents'
 
         then:
@@ -453,6 +482,8 @@ class NativeDependentComponentsReportIntegrationTest extends AbstractIntegration
         """.stripIndent()
 
         when:
+        executer.withArgument("--no-problems-report")
+        expectTaskGetProjectDeprecations()
         succeeds("dependentComponents")
 
         then:
@@ -485,6 +516,8 @@ class NativeDependentComponentsReportIntegrationTest extends AbstractIntegration
         buildFile emptyNativeBuild()
 
         when:
+        executer.withArgument("--no-problems-report")
+        expectTaskGetProjectDeprecations()
         run 'dependentComponents'
 
         then:
@@ -497,6 +530,8 @@ class NativeDependentComponentsReportIntegrationTest extends AbstractIntegration
         buildFile emptyNativeBuild()
 
         when:
+        executer.withArgument("--no-problems-report")
+        expectTaskGetProjectDeprecations()
         run 'dependentComponents', option
 
         then:
@@ -750,4 +785,5 @@ class NativeDependentComponentsReportIntegrationTest extends AbstractIntegration
             }
         '''.stripIndent()
     }
+
 }

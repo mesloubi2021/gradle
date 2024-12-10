@@ -16,7 +16,6 @@
 
 package org.gradle.api.artifacts.dsl
 
-
 import org.gradle.api.plugins.jvm.PlatformDependencyModifiers
 import org.gradle.api.plugins.jvm.TestFixturesDependencyModifiers
 import org.gradle.integtests.fixtures.AbstractIntegrationSpec
@@ -249,7 +248,7 @@ abstract class DependencyCollectorDslIntegrationTest extends AbstractIntegration
 
         var dep = testingCollectorConf.dependencies.iterator().next()
         assert(dep ${instanceOf(dsl)} ProjectDependency)
-        assert(${cast("dep", "ProjectDependency", dsl)}.dependencyProject == ${expectedProjectExpression})
+        assert(${cast("dep", "ProjectDependency", dsl)}.path == ${expectedProjectExpression}.path)
         """
 
         expect:

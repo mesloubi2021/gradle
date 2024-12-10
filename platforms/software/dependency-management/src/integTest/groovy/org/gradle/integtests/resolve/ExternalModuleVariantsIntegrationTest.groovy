@@ -39,7 +39,7 @@ class ExternalModuleVariantsIntegrationTest extends AbstractDependencyResolution
 
         buildFile << """
             repositories {
-                maven { url '${mavenRepo.uri}' }
+                maven { url = '${mavenRepo.uri}' }
             }
             configurations {
                 compile
@@ -53,7 +53,6 @@ class ExternalModuleVariantsIntegrationTest extends AbstractDependencyResolution
                 compile 'test:test:1.2@thing'
                 compile 'test:test:1.2:util'
                 compile 'test:test:1.2:util@aar'
-                compile('test:test-api:1.2') { targetConfiguration = 'compile' }
             }
             task show {
                 def artifacts = configurations.compile.incoming.artifacts
@@ -78,7 +77,6 @@ class ExternalModuleVariantsIntegrationTest extends AbstractDependencyResolution
         outputContains("test-1.2.thing {artifactType=thing, org.gradle.status=release}")
         outputContains("test-1.2-util.jar {artifactType=jar, org.gradle.status=release}")
         outputContains("test-1.2-util.aar {artifactType=aar, org.gradle.status=release}")
-        outputContains("test-api-1.2.jar {artifactType=jar, org.gradle.status=release}")
     }
 
     def "artifacts in an Ivy repo have standard attributes defined based on their type"() {
@@ -106,7 +104,7 @@ class ExternalModuleVariantsIntegrationTest extends AbstractDependencyResolution
 
         buildFile << """
             repositories {
-                ivy { url '${ivyRepo.uri}' }
+                ivy { url = "${ivyRepo.uri}" }
             }
             configurations {
                 compile
@@ -247,7 +245,7 @@ class ExternalModuleVariantsIntegrationTest extends AbstractDependencyResolution
 
         buildFile << """
             repositories {
-                maven { url '${mavenRepo.uri}' }
+                maven { url = '${mavenRepo.uri}' }
             }
             configurations {
                 compile
@@ -302,7 +300,7 @@ class ExternalModuleVariantsIntegrationTest extends AbstractDependencyResolution
 
         buildFile << """
             repositories {
-                ivy { url '${ivyRepo.uri}' }
+                ivy { url = "${ivyRepo.uri}" }
             }
             configurations {
                 compile
@@ -473,7 +471,7 @@ class ExternalModuleVariantsIntegrationTest extends AbstractDependencyResolution
         buildFile << """
             allprojects {
                 repositories {
-                    maven { url '${mavenRepo.uri}' }
+                    maven { url = '${mavenRepo.uri}' }
                 }
                 configurations {
                     compile

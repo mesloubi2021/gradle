@@ -37,6 +37,7 @@ class JacocoPluginMultiVersionIntegrationTest extends JacocoMultiVersionIntegrat
 
     def "generates html report only as default"() {
         when:
+        executer.withArgument("--no-problems-report")
         succeeds('test', 'jacocoTestReport')
 
         then:
@@ -75,8 +76,8 @@ class JacocoPluginMultiVersionIntegrationTest extends JacocoMultiVersionIntegrat
                 reports.xml.required = true
                 reports.csv.required = true
             }
-            reporting{
-                baseDir = "\$buildDir/customReports"
+            reporting {
+                baseDirectory = layout.buildDirectory.dir("customReports")
             }"""
 
         when:

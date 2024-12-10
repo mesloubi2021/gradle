@@ -18,7 +18,7 @@ package org.gradle.internal.declarativedsl
 
 import com.nhaarman.mockitokotlin2.mock
 import org.gradle.api.Action
-import org.gradle.api.initialization.Settings
+import org.gradle.api.internal.SettingsInternal
 import org.gradle.api.plugins.ExtensionContainer
 import org.gradle.api.plugins.ExtensionsSchema
 import org.gradle.api.plugins.ExtensionsSchema.ExtensionSchema
@@ -26,6 +26,7 @@ import org.gradle.api.provider.Property
 import org.gradle.api.reflect.TypeOf
 import org.gradle.declarative.dsl.model.annotations.Configuring
 import org.gradle.declarative.dsl.model.annotations.Restricted
+import org.gradle.declarative.dsl.schema.DataClass
 import org.gradle.internal.declarativedsl.settings.settingsEvaluationSchema
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -36,7 +37,7 @@ class SettingsExtensionsSchemaTest {
 
     @Test
     fun `settings extensions are imported in declarative dsl schema`() {
-        val settingsMock: Settings = run {
+        val settingsMock: SettingsInternal = run {
             val extensionsMock = run {
                 val myExtensionMock = mock<MyExtension>()
                 val extensionsSchemaMock = mock<ExtensionsSchema> {
@@ -50,18 +51,20 @@ class SettingsExtensionsSchemaTest {
                     on { getByName("myExtension") }.thenReturn(myExtensionMock)
                 }
             }
-            mock<Settings> {
+            mock<SettingsInternal> {
                 on { extensions }.thenReturn(extensionsMock)
             }
         }
 
         val schema = settingsEvaluationSchema(settingsMock)
 
-        val schemaType = schema.analysisSchema.dataClassesByFqName.values.find { it.name.simpleName == MyExtension::class.simpleName }
+        val schemaType = schema.analysisSchema.dataClassTypesByFqName.values
+            .filterIsInstance<DataClass>()
+            .find { it.name.simpleName == MyExtension::class.simpleName }
         assertNotNull(schemaType)
         assertTrue(schemaType!!.properties.any { it.name == "id" })
 
-        assertTrue(schema.analysisSchema.dataClassesByFqName.keys.any { it.simpleName == MyNestedType::class.simpleName })
+        assertTrue(schema.analysisSchema.dataClassTypesByFqName.keys.any { it.simpleName == MyNestedType::class.simpleName })
     }
 
     @Restricted

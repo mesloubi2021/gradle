@@ -34,7 +34,7 @@ import static org.hamcrest.MatcherAssert.assertThat
 
 abstract class DistributionIntegrationSpec extends AbstractIntegrationSpec {
 
-    protected static final THIRD_PARTY_LIB_COUNT = 144
+    protected static final THIRD_PARTY_LIB_COUNT = 140
 
     @Shared
     String baseVersion = GradleVersion.current().baseVersion.version
@@ -49,7 +49,10 @@ abstract class DistributionIntegrationSpec extends AbstractIntegrationSpec {
         "build-cache-packaging",
         "build-cache-spi",
         "build-events",
+        "build-init-specs",
+        "build-init-specs-api",
         "build-operations",
+        "build-operations-trace",
         "build-option",
         "build-process-services",
         "build-state",
@@ -66,6 +69,7 @@ abstract class DistributionIntegrationSpec extends AbstractIntegrationSpec {
         "declarative-dsl-api",
         "declarative-dsl-core",
         "declarative-dsl-evaluator",
+        "declarative-dsl-internal-utils",
         "declarative-dsl-provider",
         "declarative-dsl-tooling-models",
         "enterprise-logging",
@@ -73,6 +77,7 @@ abstract class DistributionIntegrationSpec extends AbstractIntegrationSpec {
         "enterprise-workers",
         "execution",
         "file-collections",
+        "file-operations",
         "file-temp",
         "file-watching",
         "files",
@@ -192,7 +197,12 @@ abstract class DistributionIntegrationSpec extends AbstractIntegrationSpec {
         //but should be good enough. If this test fails for you and you did not intend to add new jars to the distribution
         //then there is something to be fixed. If you intentionally added new jars to the distribution and this is now failing please
         //accept my sincere apologies that you have to manually bump the numbers here.
-        jarLibEntries.size() == libJarsCount
+        assert jarLibEntries.size() == libJarsCount, """
+            Expected ${libJarsCount} jars in lib directory but found ${jarLibEntries.size()}.
+            Please review the jar entries and update the expectation in the getPackagedPluginsJarCount() method.
+            Jar entries found:
+            ${jarLibEntries.collect { it.name }}
+        """
     }
 
     protected List<? extends ZipEntry> getLibZipEntries() {
@@ -236,7 +246,9 @@ abstract class DistributionIntegrationSpec extends AbstractIntegrationSpec {
 
     protected void checkMinimalContents(TestFile contentsDir) {
         // Check it can be executed
-        executer.inDirectory(contentsDir).usingExecutable('bin/gradle').withTasks("help").run()
+
+        def directory = executer.inDirectory(contentsDir)
+        directory.usingExecutable('bin/gradle').withTasks("help").run()
 
         // Scripts
         contentsDir.file('bin/gradle').assertIsFile()
@@ -247,9 +259,11 @@ abstract class DistributionIntegrationSpec extends AbstractIntegrationSpec {
 
         // Core libs
         def coreLibs = contentsDir.file("lib").listFiles().findAll {
-            it.name.startsWith("gradle-") && !it.name.startsWith("gradle-api-metadata") && !it.name.startsWith("gradle-kotlin-dsl")
+            it.name.startsWith("gradle-")
+                && !it.name.startsWith("gradle-api-metadata")
+                && !it.name.startsWith("gradle-kotlin-dsl")
+                && !it.name.startsWith("gradle-fileevents")
         }
-
 
         def prefixedCoreLibNames = coreLibsModules.collect { "gradle-$it" }
         def expectedCoreLibs = prefixedCoreLibNames.toSet()

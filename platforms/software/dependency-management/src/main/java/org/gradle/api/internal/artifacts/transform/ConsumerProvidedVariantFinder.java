@@ -19,11 +19,14 @@ package org.gradle.api.internal.artifacts.transform;
 import org.gradle.api.internal.artifacts.TransformRegistration;
 import org.gradle.api.internal.artifacts.VariantTransformRegistry;
 import org.gradle.api.internal.artifacts.ivyservice.resolveengine.artifact.ResolvedVariant;
+import org.gradle.api.internal.attributes.AttributeSchemaServices;
+import org.gradle.api.internal.attributes.AttributesFactory;
 import org.gradle.api.internal.attributes.AttributesSchemaInternal;
 import org.gradle.api.internal.attributes.ImmutableAttributes;
-import org.gradle.api.internal.attributes.ImmutableAttributesFactory;
+import org.gradle.api.internal.attributes.immutable.ImmutableAttributesSchema;
+import org.gradle.api.internal.attributes.matching.AttributeMatcher;
 import org.gradle.internal.collections.ImmutableFilteredList;
-import org.gradle.internal.component.model.AttributeMatcher;
+import org.gradle.internal.lazy.Lazy;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -41,18 +44,26 @@ import java.util.function.BiFunction;
  */
 public class ConsumerProvidedVariantFinder {
     private final VariantTransformRegistry variantTransforms;
-    private final ImmutableAttributesFactory attributesFactory;
-    private final CachingAttributeMatcher matcher;
+    private final AttributesFactory attributesFactory;
+    private final Lazy<AttributeMatcher> matcher;
     private final TransformCache transformCache;
 
     public ConsumerProvidedVariantFinder(
         VariantTransformRegistry variantTransforms,
         AttributesSchemaInternal schema,
-        ImmutableAttributesFactory attributesFactory
+        AttributesFactory attributesFactory,
+        AttributeSchemaServices attributeSchemaServices
     ) {
         this.variantTransforms = variantTransforms;
         this.attributesFactory = attributesFactory;
-        this.matcher = new CachingAttributeMatcher(schema.matcher());
+        this.matcher = Lazy.locking().of(() -> {
+            // TODO: This is incorrect. We fail to merge the consumer schema with the producer schema
+            // and therefore we miss producer rules when matching transforms.
+            // Instead, this class should be refactored to accept a matcher as a parameter,
+            // where the matcher has already been created with the consumer and producer schema.
+            ImmutableAttributesSchema immutable = attributeSchemaServices.getSchemaFactory().create(schema);
+            return attributeSchemaServices.getMatcher(immutable, ImmutableAttributesSchema.EMPTY);
+        });
         this.transformCache = new TransformCache(this::doFindTransformedVariants);
     }
 
@@ -67,7 +78,7 @@ public class ConsumerProvidedVariantFinder {
      * @return A collection of variant chains which, if applied to the corresponding source variant, will produce a
      *      variant compatible with the requested attributes.
      */
-    public List<TransformedVariant> findTransformedVariants(List<ResolvedVariant> sources, ImmutableAttributes requested) {
+    public List<TransformedVariant> findCandidateTransformationChains(List<ResolvedVariant> sources, ImmutableAttributes requested) {
         return transformCache.query(sources, requested);
     }
 
@@ -127,6 +138,8 @@ public class ConsumerProvidedVariantFinder {
      * candidate transforms linked to the previous level's chains.
      */
     private List<CachedVariant> doFindTransformedVariants(List<ImmutableAttributes> sources, ImmutableAttributes requested) {
+        AttributeMatcher attributeMatcher = matcher.get();
+
         List<ChainState> toProcess = new ArrayList<>();
         List<ChainState> nextDepth = new ArrayList<>();
         toProcess.add(new ChainState(null, requested, ImmutableFilteredList.allOf(variantTransforms.getRegistrations())));
@@ -136,15 +149,15 @@ public class ConsumerProvidedVariantFinder {
             for (ChainState state : toProcess) {
                 // The set of transforms which could potentially produce a variant compatible with `requested`.
                 ImmutableFilteredList<TransformRegistration> candidates =
-                    state.transforms.matching(transform -> matcher.isMatchingCandidate(transform.getTo(), state.requested));
+                    state.transforms.matching(transform -> attributeMatcher.isMatchingCandidate(transform.getTo(), state.requested));
 
                 // For each candidate, attempt to find a source variant that the transform can use as its root.
                 for (TransformRegistration candidate : candidates) {
                     for (int i = 0; i < sources.size(); i++) {
                         ImmutableAttributes sourceAttrs = sources.get(i);
-                        if (matcher.isMatchingCandidate(sourceAttrs, candidate.getFrom())) {
+                        if (attributeMatcher.isMatchingCandidate(sourceAttrs, candidate.getFrom())) {
                             ImmutableAttributes rootAttrs = attributesFactory.concat(sourceAttrs, candidate.getTo());
-                            if (matcher.isMatchingCandidate(rootAttrs, state.requested)) {
+                            if (attributeMatcher.isMatchingCandidate(rootAttrs, state.requested)) {
                                 DefaultVariantDefinition rootTransformedVariant = new DefaultVariantDefinition(null, rootAttrs, candidate.getTransformStep());
                                 VariantDefinition variantChain = createVariantChain(state.chain, rootTransformedVariant);
                                 results.add(new CachedVariant(i, variantChain));
@@ -251,51 +264,6 @@ public class ConsumerProvidedVariantFinder {
                 }
                 CacheKey cacheKey = (CacheKey) o;
                 return variantAttributes.equals(cacheKey.variantAttributes) && requested.equals(cacheKey.requested);
-            }
-
-            @Override
-            public int hashCode() {
-                return hashCode;
-            }
-        }
-    }
-
-    /**
-     * Caches calls to {@link AttributeMatcher#isMatchingCandidate(ImmutableAttributes, ImmutableAttributes)}
-     */
-    private static class CachingAttributeMatcher {
-        private final AttributeMatcher matcher;
-        private final ConcurrentHashMap<CacheKey, Boolean> cache = new ConcurrentHashMap<>();
-
-        public CachingAttributeMatcher(AttributeMatcher matcher) {
-            this.matcher = matcher;
-        }
-
-        public boolean isMatchingCandidate(ImmutableAttributes candidate, ImmutableAttributes requested) {
-            return cache.computeIfAbsent(new CacheKey(candidate, requested), key -> matcher.isMatchingCandidate(key.candidate, key.requested));
-        }
-
-        private static class CacheKey {
-            private final ImmutableAttributes candidate;
-            private final ImmutableAttributes requested;
-            private final int hashCode;
-
-            public CacheKey(ImmutableAttributes candidate, ImmutableAttributes requested) {
-                this.candidate = candidate;
-                this.requested = requested;
-                this.hashCode = 31 * candidate.hashCode() + requested.hashCode();
-            }
-
-            @Override
-            public boolean equals(Object o) {
-                if (this == o) {
-                    return true;
-                }
-                if (o == null || getClass() != o.getClass()) {
-                    return false;
-                }
-                CacheKey cacheKey = (CacheKey) o;
-                return candidate.equals(cacheKey.candidate) && requested.equals(cacheKey.requested);
             }
 
             @Override

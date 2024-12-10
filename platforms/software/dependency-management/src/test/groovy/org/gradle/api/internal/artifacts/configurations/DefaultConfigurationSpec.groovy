@@ -33,7 +33,6 @@ import org.gradle.api.artifacts.PublishArtifact
 import org.gradle.api.artifacts.ResolvableDependencies
 import org.gradle.api.artifacts.ResolveException
 import org.gradle.api.artifacts.ResolvedConfiguration
-import org.gradle.api.artifacts.result.ResolvedComponentResult
 import org.gradle.api.attributes.Attribute
 import org.gradle.api.internal.CollectionCallbackActionDecorator
 import org.gradle.api.internal.DocumentationRegistry
@@ -51,13 +50,15 @@ import org.gradle.api.internal.artifacts.dsl.PublishArtifactNotationParserFactor
 import org.gradle.api.internal.artifacts.dsl.dependencies.DependencyLockingProvider
 import org.gradle.api.internal.artifacts.ivyservice.TypedResolveException
 import org.gradle.api.internal.artifacts.ivyservice.moduleconverter.RootComponentMetadataBuilder
-import org.gradle.api.internal.artifacts.ivyservice.resolveengine.artifact.ResolvedFileVisitor
+import org.gradle.api.internal.artifacts.ivyservice.resolveengine.artifact.ArtifactVisitor
+import org.gradle.api.internal.artifacts.ivyservice.resolveengine.artifact.ResolvableArtifact
 import org.gradle.api.internal.artifacts.ivyservice.resolveengine.artifact.SelectedArtifactSet
 import org.gradle.api.internal.artifacts.ivyservice.resolveengine.artifact.VisitedArtifactSet
 import org.gradle.api.internal.artifacts.ivyservice.resolveengine.graph.results.DefaultVisitedGraphResults
 import org.gradle.api.internal.artifacts.ivyservice.resolveengine.graph.results.VisitedGraphResults
 import org.gradle.api.internal.artifacts.publish.DefaultPublishArtifact
 import org.gradle.api.internal.artifacts.result.MinimalResolutionResult
+import org.gradle.api.internal.artifacts.result.ResolvedComponentResultInternal
 import org.gradle.api.internal.attributes.AttributeDesugaring
 import org.gradle.api.internal.attributes.ImmutableAttributes
 import org.gradle.api.internal.file.TestFiles
@@ -67,9 +68,11 @@ import org.gradle.api.internal.project.ProjectStateRegistry
 import org.gradle.api.internal.tasks.TaskDependencyResolveContext
 import org.gradle.api.specs.Spec
 import org.gradle.api.tasks.TaskDependency
+import org.gradle.internal.Describables
 import org.gradle.internal.Factories
 import org.gradle.internal.code.UserCodeApplicationContext
 import org.gradle.internal.component.external.model.DefaultModuleComponentIdentifier
+import org.gradle.internal.component.external.model.ImmutableCapabilities
 import org.gradle.internal.component.model.DependencyMetadata
 import org.gradle.internal.dispatch.Dispatch
 import org.gradle.internal.event.AnonymousListenerBroadcast
@@ -96,7 +99,7 @@ import static org.gradle.api.artifacts.Configuration.State.UNRESOLVED
 import static org.hamcrest.CoreMatchers.equalTo
 import static org.hamcrest.MatcherAssert.assertThat
 
-class DefaultConfigurationSpec extends Specification implements InspectableConfigurationFixture {
+class DefaultConfigurationSpec extends Specification {
     Instantiator instantiator = TestUtil.instantiatorFactory().decorateLenient()
 
     def configurationsProvider = Mock(ConfigurationsProvider)
@@ -105,17 +108,17 @@ class DefaultConfigurationSpec extends Specification implements InspectableConfi
     def metaDataProvider = Mock(DependencyMetaDataProvider)
     def dependencyLockingProvider = Mock(DependencyLockingProvider)
     def resolutionStrategy = Mock(ResolutionStrategyInternal)
-    def immutableAttributesFactory = AttributeTestUtil.attributesFactory()
+    def attributesFactory = AttributeTestUtil.attributesFactory()
     def rootComponentMetadataBuilder = Mock(RootComponentMetadataBuilder)
     def projectStateRegistry = Mock(ProjectStateRegistry)
-    def domainObjectCollectioncallbackActionDecorator = Mock(CollectionCallbackActionDecorator)
+    def domainObjectCollectionCallbackActionDecorator = Mock(CollectionCallbackActionDecorator)
     def userCodeApplicationContext = Mock(UserCodeApplicationContext)
     def calculatedValueContainerFactory = Mock(CalculatedValueContainerFactory)
 
     def setup() {
         _ * listenerManager.createAnonymousBroadcaster(DependencyResolutionListener) >> { new AnonymousListenerBroadcast<DependencyResolutionListener>(DependencyResolutionListener, Stub(Dispatch)) }
         _ * resolver.getAllRepositories() >> []
-        _ * domainObjectCollectioncallbackActionDecorator.decorate(_) >> { args -> args[0] }
+        _ * domainObjectCollectionCallbackActionDecorator.decorate(_) >> { args -> args[0] }
         _ * userCodeApplicationContext.reapplyCurrentLater(_) >> { args -> args[0] }
         _ * rootComponentMetadataBuilder.getValidator() >> Mock(MutationValidator)
         _ * rootComponentMetadataBuilder.newBuilder(_, _) >> rootComponentMetadataBuilder
@@ -535,7 +538,7 @@ class DefaultConfigurationSpec extends Specification implements InspectableConfi
         _ * artifactTaskDependencies.getDependencies(_) >> requiredTasks
 
         and:
-        _ * resolver.resolveBuildDependencies(_) >> DefaultResolverResults.buildDependenciesResolved(Mock(VisitedGraphResults), visitedArtifactSet, Mock(ResolverResults.LegacyResolverResults))
+        _ * resolver.resolveBuildDependencies(_, _) >> DefaultResolverResults.buildDependenciesResolved(Stub(VisitedGraphResults), visitedArtifactSet, Mock(ResolverResults.LegacyResolverResults))
 
         expect:
         configuration.buildDependencies.getDependencies(targetTask) == requiredTasks
@@ -1044,9 +1047,9 @@ class DefaultConfigurationSpec extends Specification implements InspectableConfi
 
     def "provides resolution result"() {
         def config = conf("conf")
-        def resolvedComponentResult = Mock(ResolvedComponentResult)
-        Supplier<ResolvedComponentResult> rootSource = () -> resolvedComponentResult
-        def result = new MinimalResolutionResult(rootSource, ImmutableAttributes.EMPTY)
+        def resolvedComponentResult = Mock(ResolvedComponentResultInternal)
+        Supplier<ResolvedComponentResultInternal> rootSource = () -> resolvedComponentResult
+        def result = new MinimalResolutionResult(0, rootSource, ImmutableAttributes.EMPTY)
         def graphResults = new DefaultVisitedGraphResults(result, [] as Set, null)
 
         resolver.resolveGraph(config) >> DefaultResolverResults.graphResolved(graphResults, visitedArtifacts(), Mock(ResolverResults.LegacyResolverResults))
@@ -1118,7 +1121,7 @@ class DefaultConfigurationSpec extends Specification implements InspectableConfi
 
         then:
         config.state == UNRESOLVED
-        1 * resolver.resolveBuildDependencies(config) >> buildDependenciesResolved()
+        1 * resolver.resolveBuildDependencies(config, _) >> buildDependenciesResolved()
         0 * resolver._
     }
 
@@ -1157,7 +1160,7 @@ class DefaultConfigurationSpec extends Specification implements InspectableConfi
 
         then:
         config.state == UNRESOLVED
-        1 * resolver.resolveBuildDependencies(config) >> buildDependenciesResolved()
+        1 * resolver.resolveBuildDependencies(config, _) >> buildDependenciesResolved()
         0 * resolver._
 
         when:
@@ -1542,36 +1545,6 @@ class DefaultConfigurationSpec extends Specification implements InspectableConfi
         t.message == "Mutation of attributes is not allowed"
     }
 
-    def dumpString() {
-        when:
-        def configurationDependency = dependency("dumpgroup1", "dumpname1", "dumpversion1")
-        def otherConfSimilarDependency = dependency("dumpgroup1", "dumpname1", "dumpversion1")
-        def otherConfDependency = dependency("dumpgroup2", "dumpname2", "dumpversion2")
-        def otherConf = conf("dumpConf")
-        otherConf.getDependencies().add(otherConfDependency)
-        otherConf.getDependencies().add(otherConfSimilarDependency)
-
-        def configuration = conf().extendsFrom(otherConf)
-        configuration.getDependencies().add(configurationDependency)
-
-        then:
-        dump(configuration) == """
-Configuration:  class='class org.gradle.api.internal.artifacts.configurations.DefaultUnlockedConfiguration'  name='conf'  hashcode='${configuration.hashCode()}'  role='Legacy'
-Current Usage:
-\tConsumable - this configuration can be selected by another project as a dependency
-\tResolvable - this configuration can be resolved by this project to a set of files
-\tDeclarable - this configuration can have dependencies added to it
-Local Dependencies:
-   DefaultExternalModuleDependency{group='dumpgroup1', name='dumpname1', version='dumpversion1', configuration='default'}
-Local Artifacts:
-   none
-All Dependencies:
-   DefaultExternalModuleDependency{group='dumpgroup1', name='dumpname1', version='dumpversion1', configuration='default'}
-   DefaultExternalModuleDependency{group='dumpgroup2', name='dumpname2', version='dumpversion2', configuration='default'}
-All Artifacts:
-   none"""
-    }
-
     def "copied configuration has independent listeners"() {
         def original = conf()
         def seenOriginal = [] as Set<ResolvableDependencies>
@@ -1747,13 +1720,13 @@ All Artifacts:
     }
 
     private ResolverResults buildDependenciesResolved() {
-        def resolutionResult = new MinimalResolutionResult(() -> Stub(ResolvedComponentResult), ImmutableAttributes.EMPTY)
+        def resolutionResult = new MinimalResolutionResult(0, () -> Stub(ResolvedComponentResultInternal), ImmutableAttributes.EMPTY)
         def visitedGraphResults = new DefaultVisitedGraphResults(resolutionResult, [] as Set, null)
         DefaultResolverResults.buildDependenciesResolved(visitedGraphResults, visitedArtifacts([] as Set), Mock(ResolverResults.LegacyResolverResults))
     }
 
     private ResolverResults graphResolved(ResolveException failure) {
-        def resolutionResult = new MinimalResolutionResult(() -> Stub(ResolvedComponentResult), ImmutableAttributes.EMPTY)
+        def resolutionResult = new MinimalResolutionResult(0, () -> Stub(ResolvedComponentResultInternal), ImmutableAttributes.EMPTY)
         def visitedGraphResults = new DefaultVisitedGraphResults(resolutionResult, [] as Set, failure)
 
         def visitedArtifactSet = Stub(VisitedArtifactSet) {
@@ -1771,7 +1744,7 @@ All Artifacts:
     }
 
     private ResolverResults graphResolved(Set<File> files = []) {
-        def resolutionResult = new MinimalResolutionResult(() -> Stub(ResolvedComponentResult), ImmutableAttributes.EMPTY)
+        def resolutionResult = new MinimalResolutionResult(0, () -> Stub(ResolvedComponentResultInternal), ImmutableAttributes.EMPTY)
         def visitedGraphResults = new DefaultVisitedGraphResults(resolutionResult, [] as Set, null)
 
         def legacyResults = DefaultResolverResults.DefaultLegacyResolverResults.graphResolved(
@@ -1783,27 +1756,43 @@ All Artifacts:
     }
 
     private visitedArtifacts(Set<File> files = []) {
-        Stub(VisitedArtifactSet) {
+        Mock(VisitedArtifactSet) {
             select(_) >> selectedArtifacts(files)
         }
     }
 
     private SelectedArtifactSet selectedArtifacts(Set<File> files = []) {
-        Stub(SelectedArtifactSet) {
-            visitFiles(_, _) >> { ResolvedFileVisitor visitor, boolean l ->
-                files.each {
-                    visitor.visitFile(it)
+        return new SelectedArtifactSet() {
+            @Override
+            void visitArtifacts(ArtifactVisitor visitor, boolean continueOnSelectionFailure) {
+                files.each { file ->
+                    visitor.visitArtifact(Describables.of(file.getName()), ImmutableAttributes.EMPTY, ImmutableCapabilities.EMPTY, resolvableArtifact(file))
                 }
                 visitor.endVisitCollection(null)
             }
+
+            @Override
+            void visitDependencies(TaskDependencyResolveContext context) { }
         }
     }
 
-    private SelectedArtifactSet selectedArtifacts(Throwable failure) {
-        Stub(SelectedArtifactSet) {
-            visitDependencies(_) >> { it[0].visitFailure(failure) }
-            visitFiles(_, _) >> { ResolvedFileVisitor v, boolean l ->
-                v.visitFailure(failure)
+    private ResolvableArtifact resolvableArtifact(file) {
+        Mock(ResolvableArtifact) {
+            getFile() >> file
+        }
+    }
+
+    private static SelectedArtifactSet selectedArtifacts(Throwable failure) {
+        return new SelectedArtifactSet() {
+            @Override
+            void visitArtifacts(ArtifactVisitor visitor, boolean continueOnSelectionFailure) {
+                visitor.visitFailure(failure)
+                visitor.endVisitCollection(null)
+            }
+
+            @Override
+            void visitDependencies(TaskDependencyResolveContext context) {
+                context.visitFailure(failure)
             }
         }
     }
@@ -1847,7 +1836,7 @@ All Artifacts:
             TestFiles.fileCollectionFactory(),
             new TestBuildOperationRunner(),
             publishArtifactNotationParser,
-            immutableAttributesFactory,
+            attributesFactory,
             new ResolveExceptionMapper(Mock(DomainObjectContext), Mock(DocumentationRegistry)),
             new AttributeDesugaring(AttributeTestUtil.attributesFactory()),
             userCodeApplicationContext,
@@ -1855,7 +1844,8 @@ All Artifacts:
             Stub(WorkerThreadRegistry),
             TestUtil.domainObjectCollectionFactory(),
             calculatedValueContainerFactory,
-            TestFiles.taskDependencyFactory()
+            TestFiles.taskDependencyFactory(),
+            TestUtil.problemsService()
         )
     }
 

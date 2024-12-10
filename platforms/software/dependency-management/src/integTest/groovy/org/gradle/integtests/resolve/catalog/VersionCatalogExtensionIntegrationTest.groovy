@@ -831,7 +831,7 @@ class VersionCatalogExtensionIntegrationTest extends AbstractVersionCatalogInteg
         """
         file("buildSrc/build.gradle") << """
             repositories {
-                maven { url "${mavenHttpRepo.uri}" }
+                maven { url = "${mavenHttpRepo.uri}" }
             }
 
             dependencies {
@@ -892,7 +892,7 @@ class VersionCatalogExtensionIntegrationTest extends AbstractVersionCatalogInteg
 
             dependencyResolutionManagement {
                 repositories {
-                    maven { url "${mavenHttpRepo.uri}" }
+                    maven { url = "${mavenHttpRepo.uri}" }
                 }
                 versionCatalogs {
                     libs {
@@ -2425,7 +2425,7 @@ Second: 1.1"""
                 assert original.transitive == copied.transitive
                 assert original.targetConfiguration == copied.targetConfiguration
                 assert original.attributes == copied.attributes
-                assert original.requestedCapabilities == copied.requestedCapabilities
+                assert original.capabilitySelectors == copied.capabilitySelectors
                 assert original.endorsingStrictVersions == copied.endorsingStrictVersions
 
                 // ExternalDependency + ExternalModuleDependency

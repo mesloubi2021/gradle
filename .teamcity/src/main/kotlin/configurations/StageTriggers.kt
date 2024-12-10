@@ -36,9 +36,20 @@ class StageTriggers(model: CIBuildModel, stage: Stage, prevStage: Stage?, stageP
 
         stageWithOsTriggers.getOrDefault(stage.stageName, emptyList()).forEach { targetOs ->
             val dependencies = allDependencies.filter { it.os == targetOs }
-            triggers.add(StageTrigger(model, stage, prevStage, targetOs, dependencies))
+            triggers.add(StageTrigger(model, stage, prevStage, targetOs, dependencies, generateTriggers = false))
         }
     }
+}
+
+// https://github.com/gradle/gradle-private/issues/4527
+// https://github.com/gradle/gradle-private/issues/4528
+// Trigger ReadyForNightly and ReadyForRelease for provider-api-migration/public-api-changes branch
+// TODO: remove this after the branch is merged
+const val PROVIDER_API_MIGRATION_BRANCH = "provider-api-migration/public-api-changes"
+const val BOT_DAILY_UPGRADLE_WRAPPER_BRANCH = "bot/upgradle-to-latest-wrapper"
+
+fun determineBranchFilter(vararg branches: String): String {
+    return branches.map { "+:$it" }.joinToString("\n")
 }
 
 class StageTrigger(
@@ -46,7 +57,8 @@ class StageTrigger(
     stage: Stage,
     prevStage: Stage?,
     os: Os?,
-    dependencies: List<BaseGradleBuildType>
+    dependencies: List<BaseGradleBuildType>,
+    generateTriggers: Boolean = true,
 ) : BaseGradleBuildType(init = {
     id(stageTriggerId(model, stage, os))
     uuid = stageTriggerUuid(model, stage, os)
@@ -59,33 +71,42 @@ class StageTrigger(
         publishBuildStatusToGithub(model)
     }
 
-    val enableTriggers = model.branch.enableVcsTriggers
-    if (stage.trigger == Trigger.eachCommit) {
-        triggers.vcs {
-            quietPeriodMode = VcsTrigger.QuietPeriodMode.USE_CUSTOM
-            quietPeriod = 90
-            triggerRules = triggerExcludes
-            branchFilter = model.branch.branchFilter()
-            enabled = enableTriggers
-        }
-    } else if (stage.trigger != Trigger.never) {
-        triggers.schedule {
-            if (stage.trigger == Trigger.weekly) {
-                schedulingPolicy = weekly {
-                    dayOfWeek = ScheduleTrigger.DAY.Saturday
-                    hour = 1
-                }
-            } else {
-                schedulingPolicy = daily {
-                    hour = 0
-                    minute = 30
-                }
+    if (generateTriggers) {
+        val enableTriggers = model.branch.enableVcsTriggers
+        if (stage.trigger == Trigger.eachCommit) {
+            triggers.vcs {
+                quietPeriodMode = VcsTrigger.QuietPeriodMode.USE_CUSTOM
+                quietPeriod = 90
+                triggerRules = triggerExcludes
+                branchFilter = determineBranchFilter(
+                    model.branch.branchName,
+                    PROVIDER_API_MIGRATION_BRANCH,
+                    BOT_DAILY_UPGRADLE_WRAPPER_BRANCH
+                )
+                enabled = enableTriggers
             }
-            triggerBuild = always()
-            withPendingChangesOnly = true
-            param("revisionRule", "lastFinished")
-            branchFilter = model.branch.branchFilter()
-            enabled = enableTriggers
+        } else if (stage.trigger != Trigger.never) {
+            triggers.schedule {
+                if (stage.trigger == Trigger.weekly) {
+                    schedulingPolicy = weekly {
+                        dayOfWeek = ScheduleTrigger.DAY.Saturday
+                        hour = 1
+                    }
+                } else {
+                    schedulingPolicy = daily {
+                        hour = 0
+                        minute = 30
+                    }
+                }
+                triggerBuild = always()
+                withPendingChangesOnly = true
+                param("revisionRule", "lastFinished")
+                branchFilter = determineBranchFilter(
+                    model.branch.branchName,
+                    PROVIDER_API_MIGRATION_BRANCH
+                )
+                enabled = enableTriggers
+            }
         }
     }
 

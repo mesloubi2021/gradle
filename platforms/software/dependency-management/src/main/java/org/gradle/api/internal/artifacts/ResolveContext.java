@@ -15,15 +15,14 @@
  */
 package org.gradle.api.internal.artifacts;
 
-import org.gradle.api.internal.DomainObjectContext;
 import org.gradle.api.internal.artifacts.configurations.ResolutionHost;
 import org.gradle.api.internal.artifacts.configurations.ResolutionStrategyInternal;
 import org.gradle.api.internal.artifacts.ivyservice.moduleconverter.RootComponentMetadataBuilder;
 import org.gradle.api.internal.artifacts.ivyservice.resolveengine.graph.conflicts.Conflict;
-import org.gradle.api.internal.artifacts.transform.TransformUpstreamDependenciesResolverFactory;
-import org.gradle.api.internal.attributes.AttributeContainerInternal;
 import org.gradle.internal.component.model.DependencyMetadata;
+import org.gradle.operations.dependencies.configurations.ConfigurationIdentity;
 
+import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Set;
 
@@ -35,31 +34,32 @@ public interface ResolveContext {
     String getName();
 
     /**
+     * The identity of this resolve context, if it is a configuration.
+     * <p>
+     * Currently, everything that can be resolved is a configuration, but
+     * this is likely to change in the future when we introduce new APIs
+     * to perform resolution.
+     * <p>
+     * Used by artifact transforms to identify the source configuration in
+     * build operations.
+     */
+    @Nullable
+    ConfigurationIdentity getConfigurationIdentity();
+
+    /**
      * Identifies this resolve context within a lockfile.
      */
     String getDependencyLockingId();
 
     ResolutionHost getResolutionHost();
 
-    DomainObjectContext getDomainObjectContext();
-
     ResolutionStrategyInternal getResolutionStrategy();
-
-    boolean hasDependencies();
 
     /**
      * @implSpec Usage: This method should only be called on resolvable configurations and should throw an exception if
      * called on a configuration that does not permit this usage.
      */
     RootComponentMetadataBuilder.RootComponentState toRootComponent();
-
-    AttributeContainerInternal getAttributes();
-
-    /**
-     * @implSpec Usage: This method should only be called on resolvable configurations and should throw an exception if
-     * called on a configuration that does not permit this usage.
-     */
-    TransformUpstreamDependenciesResolverFactory getDependenciesResolverFactory();
 
     /**
      * Returns the synthetic dependencies for this context. These dependencies are generated
@@ -71,12 +71,6 @@ public interface ResolveContext {
      * called on a configuration that does not permit this usage.
      */
     List<? extends DependencyMetadata> getSyntheticDependencies();
-
-    /**
-     * Marks this resolve context as observed, meaning its state has been seen by some external operation
-     * and further changes to this context that would change its public state are forbidden.
-     */
-    void markAsObserved();
 
     FailureResolutions getFailureResolutions();
 

@@ -1,4 +1,4 @@
-// Copyright (C) 2023 Gradle, Inc.
+// Copyright (C) 2024 Gradle, Inc.
 //
 // Licensed under the Creative Commons Attribution-Noncommercial-ShareAlike 4.0 International License.;
 // you may not use this file except in compliance with the License.
@@ -1016,7 +1016,6 @@ include::sample[dir="snippets/files/archives/groovy",files="build.gradle[tags=re
 ====
 
 Often you will want to publish an archive, so that it is usable from another project.
-This process is described in <<cross_project_publications.adoc#cross_project_publications,Cross-Project publications>>.
 
 [[sec:unpacking_archives_example]]
 == Unpacking archives
@@ -1067,12 +1066,12 @@ Creating "uber" or "fat" JARs in Gradle involves packaging all dependencies into
 
 === Using the Shadow Plugin
 
-Gradle does not have full built-in support for creating uber JARs, but you can use third-party plugins like the https://github.com/johnrengelman/shadow[Shadow plugin] (`com.github.johnrengelman.shadow`) to achieve this.
+Gradle does not have full built-in support for creating uber JARs, but you can use third-party plugins like the https://github.com/GradleUp/shadow[Shadow plugin] (`com.gradleup.shadow`) to achieve this.
 This plugin packages your project classes and dependencies into a single JAR file.
 
 === Using `Project.zipTree()` and the `Jar` task
 
-To copy the contents of other JAR files into the application JAR, use the {groovyDslPath}/org.gradle.api.Project.html#org.gradle.api.Project:zipTree(java.lang.Object)[Project.zipTree(java.lang.Object)] method and the link:{groovyDslPath}/org.gradle.api.tasks.bundling.Jar.html[Jar] task.
+To copy the contents of other JAR files into the application JAR, use the link:{groovyDslPath}/org.gradle.api.Project.html#org.gradle.api.Project:zipTree(java.lang.Object)[Project.zipTree(java.lang.Object)] method and the link:{groovyDslPath}/org.gradle.api.tasks.bundling.Jar.html[Jar] task.
 This is demonstrated by the `uberJar` task in the following example:
 
 ====

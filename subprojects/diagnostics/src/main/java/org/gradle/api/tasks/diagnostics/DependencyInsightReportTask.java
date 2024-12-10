@@ -41,7 +41,7 @@ import org.gradle.api.internal.artifacts.ivyservice.ivyresolve.strategy.VersionS
 import org.gradle.api.internal.artifacts.ivyservice.resolveengine.graph.results.VisitedGraphResults;
 import org.gradle.api.internal.artifacts.resolver.ResolutionOutputsInternal;
 import org.gradle.api.internal.attributes.AttributeContainerInternal;
-import org.gradle.api.internal.attributes.ImmutableAttributesFactory;
+import org.gradle.api.internal.attributes.AttributesFactory;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.provider.ProviderFactory;
@@ -62,6 +62,7 @@ import org.gradle.api.tasks.diagnostics.internal.insight.DependencyInsightReport
 import org.gradle.api.tasks.diagnostics.internal.text.StyledTable;
 import org.gradle.api.tasks.options.Option;
 import org.gradle.initialization.StartParameterBuildOptions;
+import org.gradle.internal.deprecation.DeprecationLogger;
 import org.gradle.internal.graph.GraphRenderer;
 import org.gradle.internal.instrumentation.api.annotations.ToBeReplacedByLazyProperty;
 import org.gradle.internal.logging.text.StyledTextOutput;
@@ -149,7 +150,7 @@ public abstract class DependencyInsightReportTask extends DefaultTask {
     public Property<ResolvedComponentResult> getRootComponentProperty() {
         // Required to maintain DslObject mapping
         Configuration configuration = getConfiguration();
-        if (!rootComponentProperty.isPresent() && configuration != null && getDependencySpec() != null) {
+        if (!rootComponentProperty.isPresent() && configuration != null && dependencySpec != null) {
             if (getShowingAllVariants().get()) {
                 ConfigurationInternal configurationInternal = (ConfigurationInternal) configuration;
                 if (!configurationInternal.isCanBeMutated()) {
@@ -182,10 +183,17 @@ public abstract class DependencyInsightReportTask extends DefaultTask {
 
     /**
      * Selects the dependency (or dependencies if multiple matches found) to show the report for.
+     * @deprecated Not intended for public use.
      */
     @Internal
-    @ToBeReplacedByLazyProperty(comment = "Should Spec<?> be lazy?")
+    @Deprecated
     public @Nullable Spec<DependencyResult> getDependencySpec() {
+        DeprecationLogger
+            .deprecateMethod(DependencyInsightReportTask.class, "getDependencySpec()")
+            .withContext("This method is not intended for public use.")
+            .willBeRemovedInGradle9()
+            .withUpgradeGuideSection(8, "dependency-insight-report-task-get-dependency-spec")
+            .nagUser();
         return dependencySpec;
     }
 
@@ -315,13 +323,28 @@ public abstract class DependencyInsightReportTask extends DefaultTask {
     }
 
     /**
-     * An injected {@link ImmutableAttributesFactory}.
+     * An injected {@link AttributesFactory}.
      *
      * @since 4.9
      */
+    @Deprecated
+    @SuppressWarnings("DeprecatedIsStillUsed")
     @Inject
-    protected ImmutableAttributesFactory getAttributesFactory() {
+    protected AttributesFactory getImmutableAttributesFactory() {
         throw new UnsupportedOperationException();
+    }
+
+    /**
+     * An injected {@link AttributesFactory}.
+     * <p>
+     * Previously named {@code getImmutableAttributesFactory}, this method has been renamed for better internal alignment.
+     *
+     * @since 8.12
+     */
+    @Internal
+    @Incubating
+    protected AttributesFactory getAttributesFactory() {
+        return getImmutableAttributesFactory();
     }
 
     @TaskAction
@@ -366,7 +389,7 @@ public abstract class DependencyInsightReportTask extends DefaultTask {
                 + "\nIt can be specified from the command line, e.g: '" + getPath() + " --configuration someConf --dependency someDep'");
         }
 
-        if (getDependencySpec() == null) {
+        if (dependencySpec == null) {
             throw new InvalidUserDataException("Dependency insight report cannot be generated because the dependency to show was not specified."
                 + "\nIt can be specified from the command line, e.g: '" + getPath() + " --dependency someDep'");
         }
@@ -375,7 +398,7 @@ public abstract class DependencyInsightReportTask extends DefaultTask {
     private Set<DependencyResult> selectDependencies(ResolvedComponentResult rootComponent) {
         final Set<DependencyResult> selectedDependencies = new LinkedHashSet<>();
         eachDependency(rootComponent, dependencyResult -> {
-            if (Objects.requireNonNull(getDependencySpec()).isSatisfiedBy(dependencyResult)) {
+            if (Objects.requireNonNull(dependencySpec).isSatisfiedBy(dependencyResult)) {
                 selectedDependencies.add(dependencyResult);
             }
         }, new HashSet<>());
@@ -426,9 +449,9 @@ public abstract class DependencyInsightReportTask extends DefaultTask {
     private static final class RootDependencyRenderer implements NodeRenderer {
         private final DependencyInsightReportTask task;
         private final AttributeContainer configurationAttributes;
-        private final ImmutableAttributesFactory attributesFactory;
+        private final AttributesFactory attributesFactory;
 
-        public RootDependencyRenderer(DependencyInsightReportTask task, AttributeContainer configurationAttributes, ImmutableAttributesFactory attributesFactory) {
+        public RootDependencyRenderer(DependencyInsightReportTask task, AttributeContainer configurationAttributes, AttributesFactory attributesFactory) {
             this.task = task;
             this.configurationAttributes = configurationAttributes;
             this.attributesFactory = attributesFactory;

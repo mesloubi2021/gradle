@@ -56,7 +56,7 @@ class IsolatedProjectsToolingApiParallelConfigurationIntegrationTest extends Abs
         server.expectConcurrent("model-a", "model-b")
 
         when:
-        executer.withArguments(ENABLE_CLI)
+        withIsolatedProjects()
         def model = runBuildAction(new FetchCustomModelForEachProjectInParallel())
 
         then:
@@ -66,14 +66,14 @@ class IsolatedProjectsToolingApiParallelConfigurationIntegrationTest extends Abs
         model[2].message == "It works from project :b"
 
         and:
-        fixture.assertStateStored {
+        fixture.assertModelStored {
             projectConfigured(":buildSrc")
             buildModelCreated()
             modelsCreated(":", ":a", ":b")
         }
 
         when:
-        executer.withArguments(ENABLE_CLI)
+        withIsolatedProjects()
         def model2 = runBuildAction(new FetchCustomModelForEachProjectInParallel())
 
         then:
@@ -83,7 +83,7 @@ class IsolatedProjectsToolingApiParallelConfigurationIntegrationTest extends Abs
         model2[2].message == "It works from project :b"
 
         and:
-        fixture.assertStateLoaded()
+        fixture.assertModelLoaded()
 
         when:
         file("a/build.gradle") << """
@@ -97,7 +97,7 @@ class IsolatedProjectsToolingApiParallelConfigurationIntegrationTest extends Abs
         server.expectConcurrent("configure-a", "configure-b")
         server.expectConcurrent("model-a", "model-b")
 
-        executer.withArguments(ENABLE_CLI)
+        withIsolatedProjects()
         def model3 = runBuildAction(new FetchCustomModelForEachProjectInParallel())
 
         then:
@@ -107,7 +107,7 @@ class IsolatedProjectsToolingApiParallelConfigurationIntegrationTest extends Abs
         model3[2].message == "this is project b"
 
         and:
-        fixture.assertStateUpdated {
+        fixture.assertModelUpdated {
             fileChanged("a/build.gradle")
             fileChanged("b/build.gradle")
             projectConfigured(":buildSrc")
@@ -117,7 +117,7 @@ class IsolatedProjectsToolingApiParallelConfigurationIntegrationTest extends Abs
         }
 
         when:
-        executer.withArguments(ENABLE_CLI)
+        withIsolatedProjects()
         def model4 = runBuildAction(new FetchCustomModelForEachProjectInParallel())
 
         then:
@@ -127,7 +127,7 @@ class IsolatedProjectsToolingApiParallelConfigurationIntegrationTest extends Abs
         model4[2].message == "this is project b"
 
         and:
-        fixture.assertStateLoaded()
+        fixture.assertModelLoaded()
     }
 
     def "projects are configured in parallel when projects use plugins from included build and project scoped model is queried concurrently"() {
@@ -154,7 +154,7 @@ class IsolatedProjectsToolingApiParallelConfigurationIntegrationTest extends Abs
         server.expectConcurrent("model-a", "model-b")
 
         when:
-        executer.withArguments(ENABLE_CLI)
+        withIsolatedProjects()
         def model = runBuildAction(new FetchCustomModelForEachProjectInParallel())
 
         then:
@@ -164,7 +164,7 @@ class IsolatedProjectsToolingApiParallelConfigurationIntegrationTest extends Abs
         model[2].message == "It works from project :b"
 
         and:
-        fixture.assertStateStored {
+        fixture.assertModelStored {
             projectsConfigured(":plugins", ":", ":a", ":b")
             buildModelCreated()
             modelsCreated(":a", ":b")
@@ -262,7 +262,7 @@ class IsolatedProjectsToolingApiParallelConfigurationIntegrationTest extends Abs
         server.expectConcurrent("model-a", "model-b")
 
         when:
-        executer.withArguments(ENABLE_CLI)
+        withIsolatedProjects()
         def model = runBuildAction(new FetchCustomModelForEachProjectInParallel())
 
         then:
@@ -272,7 +272,7 @@ class IsolatedProjectsToolingApiParallelConfigurationIntegrationTest extends Abs
         model[2].message == "It works from project :b"
 
         and:
-        fixture.assertStateStored {
+        fixture.assertModelStored {
             projectsConfigured(':plugin-0', ':plugin-1', ':plugin-2', ':plugins', ':', ':a', ':b')
             buildModelCreated()
             modelsCreated(':a', ':b')
@@ -294,7 +294,7 @@ class IsolatedProjectsToolingApiParallelConfigurationIntegrationTest extends Abs
         server.expectConcurrent("configure-a", "configure-b")
 
         when:
-        executer.withArguments(ENABLE_CLI)
+        withIsolatedProjects()
         def model = fetchModel(GradleProject)
 
         then:
@@ -302,7 +302,7 @@ class IsolatedProjectsToolingApiParallelConfigurationIntegrationTest extends Abs
         model.children.name == ["a", "b"]
 
         and:
-        fixture.assertStateStored {
+        fixture.assertModelStored {
             projectsConfigured(":", ":a", ":b")
             modelsCreated(":", 2)
             modelsCreated(":a", ":b")

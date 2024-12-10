@@ -28,24 +28,27 @@ public class DefaultProblem implements Serializable, Problem {
     private final ProblemDefinition problemDefinition;
     private final String contextualLabel;
     private final List<String> solutions;
-    private final List<ProblemLocation> problemLocations;
+    private final List<ProblemLocation> originLocations;
+    private final List<ProblemLocation> contextualLocations;
     private final String details;
-    private final RuntimeException exception;
+    private final Throwable exception;
     private final AdditionalData additionalData;
 
     protected DefaultProblem(
         ProblemDefinition problemDefinition,
         @Nullable String contextualLabel,
         List<String> solutions,
-        List<ProblemLocation> problemLocations,
+        List<ProblemLocation> originLocations,
+        List<ProblemLocation> contextualLocations,
         @Nullable String details,
-        RuntimeException exception,
+        Throwable exception,
         @Nullable AdditionalData additionalData
     ) {
         this.problemDefinition = problemDefinition;
         this.contextualLabel = contextualLabel;
         this.solutions = solutions;
-        this.problemLocations = problemLocations;
+        this.originLocations = originLocations;
+        this.contextualLocations = contextualLocations;
         this.details = details;
         this.exception = exception;
         this.additionalData = additionalData;
@@ -74,13 +77,18 @@ public class DefaultProblem implements Serializable, Problem {
     }
 
     @Override
-    public List<ProblemLocation> getLocations() {
-        return problemLocations;
+    public List<ProblemLocation> getOriginLocations() {
+        return originLocations;
+    }
+
+    @Override
+    public List<ProblemLocation> getContextualLocations() {
+        return contextualLocations;
     }
 
     @Nullable
     @Override
-    public RuntimeException getException() {
+    public Throwable getException() {
         return exception;
     }
 
@@ -90,8 +98,8 @@ public class DefaultProblem implements Serializable, Problem {
     }
 
     @Override
-    public InternalProblemBuilder toBuilder() {
-        return new DefaultProblemBuilder(this);
+    public InternalProblemBuilder toBuilder(AdditionalDataBuilderFactory additionalDataBuilderFactory) {
+        return new DefaultProblemBuilder(this, additionalDataBuilderFactory);
     }
 
     private static boolean equals(@Nullable Object a, @Nullable Object b) {
@@ -110,7 +118,7 @@ public class DefaultProblem implements Serializable, Problem {
         return equals(problemDefinition, that.problemDefinition) &&
             equals(contextualLabel, that.contextualLabel) &&
             equals(solutions, that.solutions) &&
-            equals(problemLocations, that.problemLocations) &&
+            equals(originLocations, that.originLocations) &&
             equals(details, that.details) &&
             equals(exception, that.exception) &&
             equals(additionalData, that.additionalData);

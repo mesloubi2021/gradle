@@ -48,7 +48,7 @@ class ResolutionResultApiIntegrationTest extends AbstractDependencyResolutionTes
         file("build.gradle") << """
             version = '5.0'
             repositories {
-                maven { url "${mavenRepo.uri}" }
+                maven { url = "${mavenRepo.uri}" }
             }
             configurations {
                 conf
@@ -108,7 +108,7 @@ baz:1.0 requested
             }
 
             repositories {
-               maven { url "${mavenRepo.uri}" }
+               maven { url = "${mavenRepo.uri}" }
             }
 
             dependencies {
@@ -176,7 +176,7 @@ baz:1.0 requested
             }
 
             repositories {
-               maven { url "${mavenRepo.uri}" }
+               maven { url = "${mavenRepo.uri}" }
             }
 
             dependencies {
@@ -239,7 +239,7 @@ baz:1.0 requested
         buildFile << """
 
             repositories {
-               maven { url "${mavenRepo.uri}" }
+               maven { url = "${mavenRepo.uri}" }
             }
 
             configurations {
@@ -303,7 +303,7 @@ baz:1.0 requested
         buildFile << """
 
             repositories {
-               maven { url "${mavenRepo.uri}" }
+               maven { url = "${mavenRepo.uri}" }
             }
 
             configurations {
@@ -359,7 +359,7 @@ baz:1.0 requested
         buildFile << """
 
             repositories {
-               maven { url "${mavenRepo.uri}" }
+               maven { url = "${mavenRepo.uri}" }
             }
 
             configurations {
@@ -431,7 +431,7 @@ baz:1.0 requested
         buildFile << """
             allprojects {
                repositories {
-                  maven { url "${mavenRepo.uri}" }
+                  maven { url = "${mavenRepo.uri}" }
                }
 
                 apply plugin: 'java-library'
@@ -544,7 +544,7 @@ testCompileClasspath
 
             allprojects {
                repositories {
-                  maven { url "${mavenRepo.uri}" }
+                  maven { url = "${mavenRepo.uri}" }
                }
             }
 
@@ -607,7 +607,7 @@ testRuntimeClasspath
 
             allprojects {
                repositories {
-                  maven { url "${mavenRepo.uri}" }
+                  maven { url = "${mavenRepo.uri}" }
                }
             }
 
@@ -862,5 +862,211 @@ testRuntimeClasspath
         and:
         fails("selectArtifacts")
         failure.assertHasCause("Realized artifact task")
+    }
+
+    def "exposes root variant"() {
+        mavenRepo.module("org", "foo").publish()
+
+        buildFile << """
+            plugins {
+                id("java-library")
+            }
+
+            ${mavenTestRepository()}
+
+            dependencies {
+                ${hasDependencies ? 'implementation("org:foo:1.0")' : "" }
+            }
+
+            task resolve {
+                def rootComponent = configurations.runtimeClasspath.incoming.resolutionResult.rootComponent
+                def rootVariant = configurations.runtimeClasspath.incoming.resolutionResult.rootVariant
+                doLast {
+                    def componentRootVariant = rootComponent.get().variants.find { it.displayName == "runtimeClasspath" }
+                    assert rootVariant.get() == componentRootVariant
+                }
+            }
+        """
+
+        expect:
+        succeeds("resolve")
+
+        where:
+        hasDependencies << [true, false]
+    }
+
+    def "handles graphs with cycles"() {
+        settingsFile << """
+            include 'other'
+        """
+        file("other/build.gradle") << """
+            configurations {
+                dependencyScope("implementation")
+                consumable("runtimeElements") {
+                    extendsFrom(implementation)
+                    attributes {
+                        attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category, "cat"))
+                    }
+                }
+            }
+
+            dependencies {
+                implementation(project(":"))
+            }
+        """
+
+        buildFile << """
+            configurations {
+                dependencyScope("implementation")
+                consumable("runtimeElements") {
+                    extendsFrom(implementation)
+                    attributes {
+                        attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category, "cat"))
+                    }
+                }
+                resolvable("runtimeClasspath") {
+                    extendsFrom(implementation)
+                    attributes {
+                        attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category, "cat"))
+                    }
+                }
+            }
+
+            dependencies {
+                implementation(project(":other"))
+            }
+
+            task resolve {
+                def rootVariantProvider = configurations.runtimeClasspath.incoming.resolutionResult.rootVariant
+                def rootComponentProvider = configurations.runtimeClasspath.incoming.resolutionResult.rootComponent
+                doLast {
+                    def rootVariant = rootVariantProvider.get()
+                    def rootComponent = rootComponentProvider.get()
+
+                    def rootDependencies = rootComponent.getDependenciesForVariant(rootVariant)
+                    assert rootComponent.dependencies.size() == 1
+                    assert rootDependencies.size() == 1
+                    assert rootDependencies[0] == rootComponent.dependencies[0]
+
+                    def rootDependency = rootDependencies[0]
+                    assert rootDependency instanceof ResolvedDependencyResult
+
+                    def otherComponent = rootDependency.selected
+                    def otherVariant = rootDependency.resolvedVariant
+
+                    def otherDependencies = otherComponent.getDependenciesForVariant(otherVariant)
+                    assert otherComponent.dependencies.size() == 1
+                    assert otherDependencies.size() == 1
+                    assert otherDependencies[0] == otherComponent.dependencies[0]
+
+                    def otherDependency = otherDependencies[0]
+                    assert otherDependency instanceof ResolvedDependencyResult
+                    assert otherDependency.selected == rootComponent
+
+                    def runtimeElements = otherDependency.resolvedVariant
+                    def runtimeElementsDependencies = rootComponent.getDependenciesForVariant(runtimeElements)
+
+                    assert runtimeElementsDependencies.size() == 1
+                    assert runtimeElementsDependencies[0].selected == otherComponent
+                    assert runtimeElementsDependencies[0].resolvedVariant == otherVariant
+                }
+            }
+        """
+
+        expect:
+        succeeds("resolve")
+    }
+
+    def "can traverse a graph at the variant level"() {
+        settingsKotlinFile << """
+            rootProject.name = "root"
+            include("other")
+        """
+
+        file("other/build.gradle.kts") << """
+            plugins {
+                id("java-library")
+                id("java-test-fixtures")
+            }
+
+            group = "org"
+            version = "1.0"
+        """
+
+        buildKotlinFile << """
+            plugins {
+                id("java-library")
+                id("java-test-fixtures")
+            }
+
+            group = "org"
+            version = "1.0"
+
+            dependencies {
+                implementation(project(":other"))
+                testImplementation(testFixtures(project(":other")))
+            }
+
+            abstract class TraverseTask : DefaultTask() {
+
+                @get:Input
+                abstract val rootComponent: Property<ResolvedComponentResult>
+
+                @get:Input
+                abstract val rootVariant: Property<ResolvedVariantResult>
+
+                @TaskAction
+                fun traverse() {
+                    val variants = mutableListOf<String>()
+                    traverseGraphVariants(rootComponent.get(), rootVariant.get()) { variant ->
+                        val owner = variant.owner as ProjectComponentIdentifier
+                        variants.add("\${owner.buildTreePath}:\${variant.displayName}")
+                    }
+                    assert(variants == listOf(
+                        "::testRuntimeClasspath",
+                        ":other:runtimeElements",
+                        "::testFixturesRuntimeElements",
+                        ":other:testFixturesRuntimeElements",
+                        "::runtimeElements"
+                    ))
+                }
+
+                fun traverseGraphVariants(
+                    rootComponent: ResolvedComponentResult,
+                    rootVariant: ResolvedVariantResult,
+                    callback: (ResolvedVariantResult) -> Unit
+                ) {
+                    val seen = mutableSetOf(rootVariant)
+                    val queue = ArrayDeque(listOf(rootVariant to rootComponent))
+
+                    while (queue.isNotEmpty()) {
+                        val (variant, component) = queue.removeFirst()
+
+                        callback(variant)
+
+                        // Traverse this variant's dependencies
+                        component.getDependenciesForVariant(variant).forEach { dependency ->
+                            val resolved = when (dependency) {
+                                is ResolvedDependencyResult -> dependency
+                                is UnresolvedDependencyResult -> throw dependency.failure
+                                else -> throw AssertionError("Unknown dependency type: \$dependency")
+                            }
+
+                            if (!resolved.isConstraint && seen.add(resolved.resolvedVariant)) {
+                                queue.add(resolved.resolvedVariant to resolved.selected)
+                            }
+                        }
+                    }
+                }
+            }
+
+            tasks.register<TraverseTask>("traverse") {
+                rootComponent = configurations.testRuntimeClasspath.flatMap { it.incoming.resolutionResult.rootComponent }
+                rootVariant = configurations.testRuntimeClasspath.flatMap { it.incoming.resolutionResult.rootVariant }
+            }
+        """
+
+        expect:
+        succeeds("traverse")
     }
 }

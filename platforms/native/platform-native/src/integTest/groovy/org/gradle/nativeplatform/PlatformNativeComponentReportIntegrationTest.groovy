@@ -48,6 +48,8 @@ model {
 }
 """
         when:
+        executer.withArgument("--no-problems-report")
+        expectTaskGetProjectDeprecations(1)
         succeeds "components"
 
         then:
@@ -107,6 +109,8 @@ model {
 }
 """
         when:
+        executer.withArgument("--no-problems-report")
+        expectTaskGetProjectDeprecations(1)
         succeeds "components"
 
         then:
@@ -198,6 +202,8 @@ model {
 }
 """
         when:
+        executer.withArgument("--no-problems-report")
+        expectTaskGetProjectDeprecations(1)
         succeeds "components"
 
         then:
